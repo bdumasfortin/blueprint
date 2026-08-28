@@ -55,10 +55,8 @@ The browser shell was also exercised in the in-app browser at wide and narrow wi
 - the refreshed durable behavior session serves exactly one isolated target-preview layer, shows the updated instruction at wide and narrow widths, and remains free of layout regressions in both geometries;
 - the feedback wait remains attached across quiet request timeouts, and empty long polls clean up their event listeners instead of accumulating them;
 
-## Preserved review history
+## Decision history
 
-- `.lavish/blueprint-discovery-round-1.html` contains the discovery work and was evolved into round two.
-- `.lavish/blueprint-naming-round-1.html` is a closed, rejected naming exploration.
 - Local Lavish sessions supplied the interaction, architecture, testing, and visual-decision evidence. `.lavish/` is now ignored local review state; approved product, architecture, and visual contracts are preserved in `docs/` instead.
 - `examples/blueprint-evaluation/01-decision-brief.html` preserves the original Fieldnote example that exposed the design-contract mismatch; `01-decision-brief-blueprint.html` is the revised dark behavioral specimen, not a default-design example.
 - The product name remains **Blueprint**.

@@ -58,8 +58,6 @@ Blueprint currently requires Node.js 22 or newer and has no runtime package depe
 - [`docs/LAVISH_RESEARCH.md`](docs/LAVISH_RESEARCH.md) — evidence-backed notes about the Lavish architecture and the reuse boundary.
 - [`docs/CONTINUATION.md`](docs/CONTINUATION.md) — exact handoff state and recommended next session.
 - [`AGENTS.md`](AGENTS.md) — operating rules for agents working in this repository.
-- [`.lavish/blueprint-discovery-round-1.html`](.lavish/blueprint-discovery-round-1.html) — the discovery artifact, evolved through round two.
-- [`.lavish/blueprint-naming-round-1.html`](.lavish/blueprint-naming-round-1.html) — closed naming exploration; retained only as history.
 - [`upstream/lavish-axi`](upstream/lavish-axi) — read-only Git submodule pinned to the researched Lavish release.
 - [`src/`](src) and [`bin/blueprint.js`](bin/blueprint.js) — the approved loopback service, durable store, sandbox injection, browser shell, and CLI.
 - [`test/`](test) — executable protocol, recovery, authority, and full-cycle checks.

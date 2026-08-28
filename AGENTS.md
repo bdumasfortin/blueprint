@@ -5,7 +5,7 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 ## Start here
 
 1. Read `README.md`, `docs/PRODUCT.md`, and `docs/CONTINUATION.md`.
-2. Treat `.lavish/blueprint-discovery-round-1.html` as design history, not as an implementation specification.
+2. Treat any local `.lavish/` artifacts as review history, not as implementation specifications. The durable approved contracts live in `docs/`.
 3. Treat `upstream/lavish-axi` as a read-only research submodule. Do not modify it, advance its pin, or copy code from it without an explicit, documented reason.
 
 ## Current phase and authority
@@ -73,6 +73,6 @@ Exclude from Blueprint unless a later review reverses the decision: layout curta
 ## Repository hygiene
 
 - Keep Blueprint runtime state and Lavish review artifacts out of Git; `.blueprint/` and `.lavish/` are intentionally ignored.
-- The early Lavish discovery and naming files already tracked in Git remain historical evidence. Do not remove or rewrite them casually, but record all new approved decisions durably in `docs/` rather than relying on ignored review files.
+- Local Lavish files may retain useful review history, but they are ignored and are not part of a clone. Record every approved decision durably in `docs/` rather than relying on those files.
 - Update `docs/PRODUCT.md` when a product decision is approved and `docs/CONTINUATION.md` whenever the stopping point changes materially.
 - Keep commits focused and leave the main worktree in a resumable state.
