@@ -1,0 +1,24 @@
+# Blueprint review runtime and visual-QA browser profiles.
+.lavish/qa/
+
+# Local agent/editor state.
+.codex/
+.claude/settings.local.json
+.vscode/
+.idea/
+
+# Future JavaScript build output.
+node_modules/
+dist/
+coverage/
+*.log
+
+# Local configuration and credentials.
+.env
+.env.*
+!.env.example
+
+# Operating-system debris.
+.DS_Store
+Thumbs.db
+Desktop.ini
