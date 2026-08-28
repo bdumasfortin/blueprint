@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fieldnote launch decision</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1ea;
+      --sheet: #fffdf8;
+      --ink: #17211f;
+      --muted: #63706b;
+      --line: #d9d5cb;
+      --green: #1d6958;
+      --green-soft: #dfece6;
+      --amber: #a76524;
+      --amber-soft: #f4e6d4;
+      --navy: #283c58;
+      --red: #9b4744;
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    .page { width: min(1160px, calc(100% - 36px)); margin: 0 auto; padding: 34px 0 80px; }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.02em; }
+    .mark { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50% 50% 50% 10px; background: var(--green); color: white; font: 800 13px Georgia, serif; }
+    .doc-id { color: var(--muted); font-size: 12px; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: 50px; padding: 52px 0 42px; }
+    .kicker { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    h1, h2, h3 { margin: 0; letter-spacing: -.035em; }
+    h1 { margin-top: 12px; max-width: 750px; font: 600 clamp(42px, 6vw, 72px)/.98 Georgia, serif; }
+    h2 { font: 600 clamp(28px, 3vw, 39px)/1.1 Georgia, serif; }
+    h3 { font-size: 19px; }
+    p { margin: 0; }
+    .lede { max-width: 720px; margin-top: 21px; color: var(--muted); font-size: 18px; }
+    .recommendation { align-self: end; padding: 23px; border: 1px solid #b9cec5; border-radius: 16px; background: var(--green-soft); }
+    .recommendation .label { color: var(--green); font-size: 11px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .recommendation strong { display: block; margin-top: 9px; font: 600 25px/1.1 Georgia, serif; }
+    .recommendation p { margin-top: 9px; color: #476058; }
+    .recommendation .decision-date { margin-top: 18px; padding-top: 13px; border-top: 1px solid #bfd2ca; color: var(--green); font-size: 12px; font-weight: 750; }
+    .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+    .fact { min-width: 0; padding: 18px; background: var(--sheet); }
+    .fact span { color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+    .fact strong { display: block; margin-top: 5px; font-size: 18px; }
+    section { margin-top: 64px; }
+    .section-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 420px); align-items: end; gap: 40px; margin-bottom: 22px; }
+    .section-head p { color: var(--muted); }
+    .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+    .option { overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--sheet); }
+    .option.recommended { border-color: #80a99b; box-shadow: 0 18px 42px rgba(42,78,66,.12); }
+    .option-copy { padding: 20px 20px 14px; }
+    .option-number { color: var(--muted); font: 700 11px monospace; }
+    .option h3 { margin-top: 20px; }
+    .option-copy > p { margin-top: 8px; min-height: 68px; color: var(--muted); font-size: 13px; }
+    .tag { display: inline-flex; margin-top: 15px; padding: 4px 8px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+    .specimen { height: 190px; margin: 0 12px 12px; padding: 13px; border-radius: 11px; background: #e8e5de; }
+    .email-window, .web-window { height: 100%; overflow: hidden; border: 1px solid #c7c8c3; border-radius: 8px; background: #fff; box-shadow: 0 7px 18px rgba(40,48,45,.08); }
+    .window-bar { height: 22px; border-bottom: 1px solid #e2e2de; background: #f7f7f4; }
+    .email-content { padding: 13px; }
+    .mini-brand { color: var(--green); font-size: 7px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .mini-title { margin-top: 7px; font: 600 15px/1.05 Georgia, serif; }
+    .mini-line { height: 5px; margin-top: 7px; border-radius: 4px; background: #d5d8d5; }
+    .mini-line.short { width: 65%; }
+    .mini-story { display: grid; grid-template-columns: 30px 1fr; gap: 8px; margin-top: 13px; }
+    .mini-story i { height: 30px; border-radius: 5px; background: #b5cfc6; }
+    .dashboard { display: grid; grid-template-columns: 44px 1fr; height: calc(100% - 22px); }
+    .dash-nav { padding: 8px 6px; background: #263d3a; }
+    .dash-nav i { display: block; height: 5px; margin-bottom: 7px; border-radius: 3px; background: #76918c; }
+    .dash-main { padding: 10px; }
+    .dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 9px; }
+    .dash-cards i { height: 45px; border: 1px solid #d8ddd9; border-radius: 5px; background: #f7f7f4; }
+    .hybrid { display: grid; grid-template-columns: 1fr .72fr; gap: 7px; height: 100%; }
+    .hybrid .email-window, .hybrid .web-window { height: 100%; }
+    .hybrid .dashboard { grid-template-columns: 30px 1fr; }
+    .criteria { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; padding: 0 20px 20px; }
+    .criterion { padding-top: 9px; border-top: 1px solid var(--line); }
+    .criterion span { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+    .criterion strong { display: block; margin-top: 2px; font-size: 12px; }
+    .matrix-wrap { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+    th:not(:first-child), td:not(:first-child) { text-align: center; }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr.recommended-row { background: #eef5f1; }
+    .score { display: inline-grid; place-items: center; min-width: 30px; height: 25px; border-radius: 6px; background: #edf0ec; color: var(--muted); font-weight: 800; }
+    .score.high { background: var(--green-soft); color: var(--green); }
+    .score.low { background: var(--amber-soft); color: var(--amber); }
+    .total { font-size: 18px; color: var(--green); }
+    .sequence { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; counter-reset: phase; }
+    .phase { counter-increment: phase; padding: 20px; border-top: 3px solid var(--green); border-radius: 5px 5px 13px 13px; background: var(--sheet); }
+    .phase::before { content: "0" counter(phase); color: var(--green); font: 750 11px monospace; }
+    .phase h3 { margin-top: 24px; }
+    .phase p { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .phase ul { margin: 15px 0 0; padding-left: 18px; color: #4d5b56; font-size: 12px; }
+    .assumptions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .assumption { display: grid; grid-template-columns: 45px 1fr; gap: 14px; padding: 17px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+    .risk { display: grid; place-items: center; width: 45px; height: 45px; border-radius: 10px; background: var(--amber-soft); color: var(--amber); font-weight: 850; }
+    .assumption h3 { font-size: 15px; }
+    .assumption p { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .decision-box { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 30px; margin-top: 64px; padding: 27px; border: 1px solid #b6cec4; border-radius: 16px; background: var(--green-soft); }
+    .decision-box p { margin-top: 8px; color: #4a6259; }
+    .decision-box .status { padding: 9px 12px; border-radius: 999px; background: var(--sheet); color: var(--green); font-size: 11px; font-weight: 850; text-transform: uppercase; white-space: nowrap; }
+    footer { display: flex; justify-content: space-between; gap: 24px; margin-top: 52px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    @media (max-width: 900px) {
+      .hero, .section-head { grid-template-columns: 1fr; gap: 24px; }
+      .recommendation { align-self: auto; }
+      .facts { grid-template-columns: 1fr 1fr; }
+      .options { grid-template-columns: 1fr; }
+      .option-copy > p { min-height: auto; }
+      .specimen { height: 230px; }
+    }
+    @media (max-width: 620px) {
+      .page { width: min(100% - 22px, 1160px); padding-top: 20px; }
+      .masthead, footer, .decision-box { align-items: flex-start; flex-direction: column; display: flex; }
+      .hero { padding-top: 34px; }
+      .facts, .sequence, .assumptions { grid-template-columns: 1fr; }
+      .matrix-wrap { overflow-x: auto; }
+      table { min-width: 610px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div class="brand"><span class="mark">F</span> Fieldnote</div>
+      <div class="doc-id">Decision brief · 06 September</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="kicker">Launch decision</div>
+        <h1>How should Fieldnote become a weekly habit?</h1>
+        <p class="lede">Fieldnote turns scattered client signals into one concise Friday briefing for an 18-person consultancy. The launch shape must earn attention without creating another destination people are expected to remember.</p>
+      </div>
+      <aside class="recommendation">
+        <span class="label">Working recommendation</span>
+        <strong>Ship the digest with a lightweight archive.</strong>
+        <p>Use email to establish reach and a small web archive to preserve retrieval, sharing, and future structure.</p>
+        <div class="decision-date">Decision requested before pilot setup</div>
+      </aside>
+    </section>
+
+    <div class="facts" aria-label="Decision constraints">
+      <div class="fact"><span>Audience</span><strong>18 consultants</strong></div>
+      <div class="fact"><span>Publishing cadence</span><strong>Every Friday</strong></div>
+      <div class="fact"><span>Pilot content</span><strong>5 client signals</strong></div>
+      <div class="fact"><span>Success signal</span><strong>Useful in Monday work</strong></div>
+    </div>
+
+    <section aria-labelledby="options-title">
+      <div class="section-head">
+        <div><div class="kicker">Three launch shapes</div><h2 id="options-title">Reach, retrieval, or both?</h2></div>
+        <p>The main tradeoff is behavioral: pushing a briefing into an existing habit creates reach, while a dedicated workspace creates structure but asks the team to form a new habit.</p>
+      </div>
+
+      <div class="options">
+        <article class="option">
+          <div class="option-copy"><span class="option-number">01</span><h3>Email digest only</h3><p>A polished Friday email with five signals, one implication, and one suggested follow-up.</p><span class="tag">Fastest launch</span></div>
+          <div class="specimen">
+            <div class="email-window"><div class="window-bar"></div><div class="email-content"><div class="mini-brand">Fieldnote / Friday 14</div><div class="mini-title">What changed in client work this week</div><div class="mini-line"></div><div class="mini-line short"></div><div class="mini-story"><i></i><div><div class="mini-line"></div><div class="mini-line short"></div></div></div><div class="mini-story"><i></i><div><div class="mini-line"></div><div class="mini-line short"></div></div></div></div></div>
+          </div>
+          <div class="criteria"><div class="criterion"><span>Reach</span><strong>Very high</strong></div><div class="criterion"><span>Retrieval</span><strong>Low</strong></div><div class="criterion"><span>Build</span><strong>Small</strong></div><div class="criterion"><span>Habit risk</span><strong>Low</strong></div></div>
+        </article>
+
+        <article class="option">
+          <div class="option-copy"><span class="option-number">02</span><h3>Workspace dashboard</h3><p>A searchable home for briefs, client tags, signal history, and individual follow-up.</p><span class="tag" style="background:#e6eaf0;color:#3b506e">Most structured</span></div>
+          <div class="specimen">
+            <div class="web-window"><div class="window-bar"></div><div class="dashboard"><div class="dash-nav"><i></i><i></i><i></i><i></i></div><div class="dash-main"><div class="mini-brand">This week</div><div class="mini-title">Client intelligence</div><div class="dash-cards"><i></i><i></i><i></i><i></i></div></div></div></div>
+          </div>
+          <div class="criteria"><div class="criterion"><span>Reach</span><strong>Medium</strong></div><div class="criterion"><span>Retrieval</span><strong>Very high</strong></div><div class="criterion"><span>Build</span><strong>Large</strong></div><div class="criterion"><span>Habit risk</span><strong>High</strong></div></div>
+        </article>
+
+        <article class="option recommended">
+          <div class="option-copy"><span class="option-number">03</span><h3>Digest + archive</h3><p>The complete briefing arrives by email; each issue also has a stable, searchable web page.</p><span class="tag">Recommended</span></div>
+          <div class="specimen"><div class="hybrid"><div class="email-window"><div class="window-bar"></div><div class="email-content"><div class="mini-brand">Fieldnote / Friday 14</div><div class="mini-title">Five signals worth carrying into Monday</div><div class="mini-line"></div><div class="mini-line short"></div><div class="mini-story"><i></i><div><div class="mini-line"></div><div class="mini-line short"></div></div></div></div></div><div class="web-window"><div class="window-bar"></div><div class="dashboard"><div class="dash-nav"><i></i><i></i><i></i></div><div class="dash-main"><div class="mini-brand">Archive</div><div class="dash-cards"><i></i><i></i><i></i><i></i></div></div></div></div></div></div>
+          <div class="criteria"><div class="criterion"><span>Reach</span><strong>Very high</strong></div><div class="criterion"><span>Retrieval</span><strong>High</strong></div><div class="criterion"><span>Build</span><strong>Medium</strong></div><div class="criterion"><span>Habit risk</span><strong>Low</strong></div></div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="matrix-title">
+      <div class="section-head"><div><div class="kicker">Decision matrix</div><h2 id="matrix-title">The recommendation depends on reach.</h2></div><p>Scores use a five-point scale. Reach and habit fit are weighted twice because the pilot is intended to test whether the briefing becomes useful, not whether the final information architecture is complete.</p></div>
+      <div class="matrix-wrap">
+        <table>
+          <thead><tr><th>Option</th><th>Reach ×2</th><th>Retrieval</th><th>Habit fit ×2</th><th>Build cost</th><th>Total / 30</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Email only</strong></td><td><span class="score high">5</span></td><td><span class="score low">2</span></td><td><span class="score high">5</span></td><td><span class="score high">5</span></td><td><strong class="total">27</strong></td></tr>
+            <tr><td><strong>Dashboard</strong></td><td><span class="score">3</span></td><td><span class="score high">5</span></td><td><span class="score low">2</span></td><td><span class="score low">2</span></td><td><strong class="total">17</strong></td></tr>
+            <tr class="recommended-row"><td><strong>Digest + archive</strong></td><td><span class="score high">5</span></td><td><span class="score">4</span></td><td><span class="score high">5</span></td><td><span class="score">3</span></td><td><strong class="total">27</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="sequence-title">
+      <div class="section-head"><div><div class="kicker">Proposed pilot</div><h2 id="sequence-title">Build evidence in three releases.</h2></div><p>The archive stays deliberately small until the team demonstrates retrieval behavior. No personalized feed, alerts, or client workspace is included in the pilot.</p></div>
+      <div class="sequence">
+        <article class="phase"><h3>Establish the signal</h3><p>Publish a consistent digest that is short enough to finish and specific enough to use.</p><ul><li>Five signals</li><li>One owner per signal</li><li>One Monday-use prompt</li></ul></article>
+        <article class="phase"><h3>Preserve each issue</h3><p>Create a stable web page for every digest without adding a separate navigation habit.</p><ul><li>Permanent URL</li><li>Client and topic tags</li><li>Copyable excerpt links</li></ul></article>
+        <article class="phase"><h3>Observe retrieval</h3><p>Add structure only after the team searches, revisits, or shares past signals in real work.</p><ul><li>Weekly usefulness check</li><li>Retrieval examples</li><li>Decision on deeper workspace</li></ul></article>
+      </div>
+    </section>
+
+    <section aria-labelledby="assumptions-title">
+      <div class="section-head"><div><div class="kicker">What could change the decision</div><h2 id="assumptions-title">Four assumptions carry the recommendation.</h2></div><p>These are not implementation risks. They are claims about the team’s behavior that the pilot needs to expose.</p></div>
+      <div class="assumptions">
+        <article class="assumption"><div class="risk">A1</div><div><h3>Email remains a trusted attention channel.</h3><p>If newsletters are routinely ignored, the recommendation overstates the reach advantage.</p></div></article>
+        <article class="assumption"><div class="risk">A2</div><div><h3>Five signals can be edited into a coherent brief.</h3><p>If the content needs deep context, the digest may become a teaser rather than the product.</p></div></article>
+        <article class="assumption"><div class="risk">A3</div><div><h3>Monday usefulness can be observed credibly.</h3><p>The current success signal is behavioral but has no defined collection method.</p></div></article>
+        <article class="assumption"><div class="risk">A4</div><div><h3>A lightweight archive stays lightweight.</h3><p>Search, permissions, taxonomy, and analytics pressure could turn the archive into the dashboard by accident.</p></div></article>
+      </div>
+    </section>
+
+    <aside class="decision-box">
+      <div><div class="kicker">Decision requested</div><h2>Approve digest + archive for the pilot.</h2><p>Preserve the dashboard as a later option only if observed retrieval makes a dedicated workspace materially more useful.</p></div>
+      <span class="status">Ready for review</span>
+    </aside>
+
+    <footer><span>Fieldnote · fictional evaluation artifact</span><span>Prepared to test Blueprint’s decision-review loop</span></footer>
+  </main>
+</body>
+</html>

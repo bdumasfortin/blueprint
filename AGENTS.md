@@ -10,8 +10,8 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 
 ## Current phase and authority
 
-- Blueprint is in discovery and interaction design. There is no approved implementation architecture or scaffold.
-- Do not begin product implementation merely because the next steps are documented.
+- Blueprint's minimum credible core is approved, implemented locally, and undergoing direct user testing. Broader product mechanisms remain in discovery.
+- Do not expand beyond the approved core merely because deferred steps are documented.
 - Before consequential product, UX, architecture, dependency, protocol, persistence, or licensing decisions, present a recommendation, alternatives, tradeoffs, risks, and unknowns for explicit review.
 - Local prototypes and review artifacts are exploration. They do not authorize production implementation.
 - The product name is **Blueprint**. Do not restart naming work unless the user asks.
@@ -21,8 +21,8 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 - One human, one agent, one artifact.
 - Personal and local-first; colleagues use their own private installations.
 - Codex and Claude Code are the first-class agent adapters.
-- The reviewer controls reveal, send, verification, and session completion.
-- A prepared artifact or revision must not steal focus, open itself, or silently replace visible content.
+- The reviewer initiates Blueprint through their agent and controls send, staged-revision reveal, verification, and session completion.
+- The requested initial launch displays the artifact immediately. A prepared revision must not steal focus, open itself, or silently replace visible content.
 - Feedback remains private and editable until the reviewer deliberately sends one bundled packet.
 - Agent delivery must be acknowledged; failures must preserve drafts and offer a recoverable copy path.
 - Stable comment identities survive revisions. The agent may report an item addressed; only the human may accept it or reopen it.
@@ -33,11 +33,21 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 
 ## Lavish-derived boundary
 
-Preserve conceptually: local HTML review, sandboxed rendering, precise text/element annotation, loopback operation, an agent-friendly CLI, long-poll feedback delivery, attachments, and portable export.
+Preserve conceptually: local HTML review, sandboxed rendering, precise element annotation, loopback operation, an agent-friendly CLI, long-poll feedback delivery, attachments, and portable export.
 
 Redesign: the browser chrome, annotation gesture, private draft queue, packet composer, delivery acknowledgement, staged revision reveal, connection status, comment lifecycle, verification, and optional final decision artifact.
 
 Exclude from Blueprint unless a later review reverses the decision: layout curtain/gate, layout-issues inbox, publishing shortcut or hosted sharing, DOM snapshot feedback, editable Mermaid/whiteboard mode, telemetry, multi-human collaboration, and full in-tool chat.
+
+## Blueprint artifact design
+
+- Before authoring an artifact for Blueprint, use `blueprint design` to check the current visual authority.
+- Precedence is: explicit user direction for the artifact; then repository or agent instructions explicitly about Blueprint artifact design.
+- Do not inspect, infer, or inherit a workspace design system merely because it exists. General project styling is not an override unless an instruction explicitly applies it to Blueprint artifacts.
+- Blueprint's approved default is the unified graphite diagnostic system in `docs/VISUAL_SYSTEM.md`: a fine 24-pixel non-blue grid, slate structure, cyan interaction signal, restrained semantic colors, and a shared language across review chrome and default artifacts.
+- Reserve the documented brass meta band for reviewer-facing instructions inside artifacts. Do not use it for subject matter, recommendations, ordinary warnings, or status.
+- The former calm, dark, editorial/instrument prototype remains a behavioral specimen and is not visual authority.
+- Runtime review chrome must not rewrite the artifact's authored styling.
 
 ## Review workflow
 
@@ -62,7 +72,7 @@ Exclude from Blueprint unless a later review reverses the decision: layout curta
 
 ## Repository hygiene
 
-- Keep generated browser profiles and QA runtime data out of Git; `.lavish/qa/` is intentionally ignored.
-- Preserve `.lavish/*.html` and `.lavish/assets/` when they contain decision history.
+- Keep Blueprint runtime state and Lavish review artifacts out of Git; `.blueprint/` and `.lavish/` are intentionally ignored.
+- The early Lavish discovery and naming files already tracked in Git remain historical evidence. Do not remove or rewrite them casually, but record all new approved decisions durably in `docs/` rather than relying on ignored review files.
 - Update `docs/PRODUCT.md` when a product decision is approved and `docs/CONTINUATION.md` whenever the stopping point changes materially.
 - Keep commits focused and leave the main worktree in a resumable state.

@@ -1,5 +1,6 @@
-# Blueprint review runtime and visual-QA browser profiles.
-.lavish/qa/
+# Local Blueprint and Lavish review state.
+.blueprint/
+.lavish/
 
 # Local agent/editor state.
 .codex/
