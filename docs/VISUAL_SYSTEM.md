@@ -1,6 +1,6 @@
 # Blueprint visual system
 
-Status: approved visual source of truth for default Blueprint artifacts, 2026-08-28. Runtime review-chrome implementation remains a separate authority gate.
+Status: approved visual source of truth for Blueprint's runtime review chrome and default artifacts, 2026-08-28. Runtime implementation was separately approved and completed on 2026-08-28.
 
 ## Precedence
 
@@ -48,9 +48,9 @@ These values define relationships, not a requirement to repeat every token in ev
 
 Use a uniform 24-pixel non-blue graphite grid at low contrast. A representative dark treatment is two one-pixel linear gradients using `rgba(185, 199, 207, .05)` over the canvas. The grid may remain visible through restrained translucent surfaces, but it must not compete with artifact content.
 
-## Artifact meta instructions
+## Reviewer meta instructions
 
-Reserve a distinct brass band for reviewer-facing guidance inside an artifact. It means “about the review,” not “part of the subject.” Appropriate content includes:
+Reserve a distinct brass band for reviewer-facing guidance. It means “about the review,” not “part of the subject.” In authored artifacts it may explain review protocol, choices, scope, or submission. In the runtime chrome it is limited to the single concise instruction for the primary review gesture. Appropriate content includes:
 
 - review protocol or interaction instructions;
 - how to interpret or choose among options;
@@ -65,16 +65,21 @@ Do not use the brass treatment for recommendations, product content, status, or 
 | Dark | `#d8a34d` | `rgba(216, 163, 77, .11)` |
 | Light | `#81500f` | `rgba(129, 80, 15, .09)` |
 
-Render the instruction as a compact band with a one-pixel brass border, a four-pixel brass leading rule, and very faint diagonal brass striping. A short uppercase monospace label may name the instruction type.
+Render the instruction as a compact band with a one-pixel brass border, a four-pixel brass leading rule, and very faint diagonal brass striping. A short uppercase monospace label may name the instruction type. The runtime instruction omits the label and says only: “Hold Alt/Option and click any element to leave feedback.”
 
 ## Artifact structure
 
 - Lead with one recommendation.
 - Present no more than three primary choices with concise tradeoffs and supporting evidence available on demand.
-- Show a representative specimen for every visual, layout, or motion option.
+- When the reviewer must choose, use a labelled native decision form: radios for mutually exclusive options, checkboxes or switches for independent choices, and selects for longer lists. A selectable card is a visual label for a real input, not a click-only container.
+- Keep selection visibly distinct from queueing. Control changes remain local; one explicit **Queue response** action creates or replaces one editable private Feedback draft for the form and never sends it to the agent.
+- Show a representative specimen for every visual, layout, or motion option. If behavior affects the choice, provide keyboard-operable controls that demonstrate meaningful states, transitions, or microinteractions rather than a static screenshot.
+- Use motion to explain state and causality, not as decoration. Honor `prefers-reduced-motion`, avoid distracting autoplay, and keep the static fallback equally understandable.
 - Keep artifacts responsive at wide and narrow widths, keyboard-readable, and self-contained.
 - Keep the authored HTML portable and authoritative. Blueprint's injected annotation behavior must not be copied into the source artifact.
 
 ## Runtime boundary
 
-This contract guides new default artifacts now. The approved direction also unifies the eventual runtime review chrome, but the visual approval did not authorize silently restyling an active session or implementing that runtime change. The chrome must never rewrite authored artifact styling.
+The user separately authorized applying this system to the runtime review chrome on 2026-08-28. The shell, controls, lifecycle states, and injected exact-target preview now use the graphite, slate, cyan, and restrained semantic tokens defined here. The chrome must never rewrite authored artifact styling, and a runtime restyle does not change the human reveal gate for staged artifact revisions.
+
+Trusted review panes use a compact ten-pixel scrollbar: canvas-colored track, slate thumb at rest, cyan hover and active states, and the same two-pixel corner geometry as the surrounding controls. This styling belongs only to Blueprint's shell; scrollbars inside the sandboxed artifact remain under the artifact author's control.

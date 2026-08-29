@@ -1,24 +1,24 @@
 # Blueprint product contract
 
-Status: interaction and minimum-core architecture contracts approved for local implementation and user testing, 2026-08-28. This document records approved directions and explicitly separates them from testing hypotheses and deferred product choices.
+Status: interaction and minimum-core architecture contracts approved for local implementation and user testing on 2026-08-28; AXI distribution direction, its first local implementation slice, and the approval/revision lifecycle approved on 2026-08-29. This document records approved directions and explicitly separates them from testing hypotheses and deferred product choices.
 
 ## Problem
 
 Agent-generated HTML can communicate plans, comparisons, and designs far better than plain text, but the review loop often becomes noisy or unreliable. The reviewer may be interrupted by automatic browser behavior, lose draft feedback, struggle to point at the exact thing that should change, or receive a revision without a trustworthy way to verify what was addressed.
 
-Blueprint should make visual review feel deliberate: the agent launches the requested initial artifact; the human drafts privately, then sends; the agent reports work, and the human controls when revisions appear and verifies them.
+Blueprint should make visual review feel deliberate: the agent launches the requested initial artifact; the human drafts privately, then chooses final approval or requests a revision; the agent reports work, and the human deliberately reveals and verifies revisions.
 
 ## Core loop
 
 1. The reviewer asks their agent to prepare and launch an artifact in Blueprint.
 2. Blueprint displays the initial artifact immediately; there is no separate ready or reveal gate for the first snapshot.
 3. The reviewer holds Alt/Option to preview the exact HTML element under the pointer, then clicks it to create a local draft comment.
-4. Drafts collect chronologically into one editable feedback packet.
-5. The reviewer explicitly sends the packet.
-6. Blueprint reports acknowledgement, working, revision-ready, or disconnected state without becoming a full chat client.
-7. The agent stages a revision and maps its work to stable comment identities.
-8. The reviewer chooses when to reveal the revision.
-9. The reviewer accepts or reopens comments individually, with a shortcut to accept all items currently reported as addressed.
+4. Drafts collect chronologically into an editable, revision-scoped feedback batch.
+5. With no drafts, the only submission is **Approve**. With drafts, it becomes **Approve with feedback** and **Revise using feedback** appears beside it.
+6. Approval is final and ends the session. Once its packet is durably queued, the browser retires the artifact and all feedback controls behind an opaque completion screen; a loaded or polling shell that discovers an already-ended session does the same. **Revise using feedback** sends the current batch, shows one centered overlay confirmation that fades away, and keeps the visible revision available. Feedback persistently shows whether the request is waiting for the agent or has been received for work, while retaining the exact sent comments so the reviewer can continue without duplicating them.
+7. The agent stages a revision against one or more revise batches and maps each amendment to stable comment identities.
+8. Blueprint presents a blocking **Revision is ready** curtain. The artifact changes only when the reviewer chooses **See latest revision**; unsent drafts survive the reveal.
+9. The revealed artifact marks amended elements, while the main **Feedback** tab shows drafts and all non-accepted review items with before, after, summary, evidence, Accept, and Reopen. Accepting an item removes both its amended-element marker and its card from Feedback. The read-only **History** tab retains comments and amendments in newest-first revision cycles.
 
 ## Settled decisions
 
@@ -28,12 +28,14 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - Personal/local-first. Friends and colleagues can install their own private copies; Blueprint is not a shared multi-user workspace.
 - Codex and Claude Code are the initial first-class adapters.
 - The human entry point is conversational: the reviewer asks their agent to start or continue Blueprint and is never expected to invoke the CLI. The CLI is an agent-adapter surface.
+- Blueprint is formally an AXI. The approved distribution direction is a global npm CLI with explicit, reversible SessionStart hooks for Codex and Claude Code, plus a generated on-demand skill and later `npx` evaluation path.
+- Installing the npm package alone must not edit agent configuration. Hook setup is a separate explicit action. Public package naming, licensing, publication, and changes to a user's real agent installation remain separate authority gates.
 - Ground-up product design informed by Lavish and selected MIT code, not a fork that inherits the entire product architecture.
 
 ### Human control
 
 - A direct request to the agent to launch Blueprint authorizes opening the initial artifact without a second in-product reveal step.
-- After launch, never reload, replace, or take focus without a human reveal action. Reset to the top when the reviewer deliberately reveals a staged revision.
+- After launch, never reload or replace the artifact without a human reveal action. A staged revision deliberately takes focus with a blocking ready curtain, but the current artifact remains recorded and unreplaced until **See latest revision**. Reset to the top when the reviewer reveals it.
 - Reviewer actions close the loop. Agent claims such as “addressed” do not auto-resolve feedback.
 - Preserve stale anchors and evidence rather than silently discarding them when the artifact changes.
 
@@ -43,16 +45,30 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - While Alt/Option is held, a temporary outline and element label identify the exact click target before the reviewer annotates it.
 - Text selection, an annotation toggle, and a context-menu fallback do not create comments.
 - A new comment opens its editor and receives focus immediately, including reopening the inspector if necessary.
-- Comments are private local drafts until bundled and sent deliberately.
+- Comments are private local drafts until the reviewer deliberately chooses **Approve with feedback** or **Revise using feedback**.
+- Plain Enter in an existing comment editor queues and durably saves that private comment without sending feedback to the agent. In **Additional feedback**, Enter queues the text as a new general private comment and clears the composer. Only the explicit **Approve with feedback** or **Revise using feedback** actions deliver comments. Shift+Enter inserts a newline, text composition never queues or submits, and repeated key events cannot create duplicate queue or send actions.
+- Every draft records the revision where it was written. Revealing a staged revision preserves unsent drafts and their original evidence instead of silently moving their anchors to the newest snapshot.
 - Stable local comment IDs underpin revision mapping and verification without turning Blueprint into a ticket tracker.
 - Attachments stay available through a quiet icon, not a prominent labeled control.
+
+### Decisions inside artifacts
+
+- A review that asks the reviewer to choose should provide native, keyboard-operable controls whenever they clarify the response: radios for mutually exclusive options, checkboxes or switches for independent choices, and selects for longer lists. Whole-card selection is encouraged when the card remains a real label for its native input.
+- Selection is reversible browser-local state, not feedback or authorization. A separate **Queue response** action serializes the form's meaningful named values into one editable private draft in Feedback. Re-queueing the same form before delivery replaces that draft in place instead of adding duplicates.
+- Queue response never contacts the agent, approves the artifact, requests a revision, or ends the session. Only **Approve with feedback** or **Revise using feedback** delivers the queued decision response.
+- UI examples should behave like representative product slices when interaction affects the decision. Each option should expose the useful states, transitions, or microinteractions needed to judge it; purely static wireframes are reserved for choices where behavior is irrelevant.
+- Specimen motion must clarify causality, remain restrained, support keyboard use, and honor `prefers-reduced-motion`. Decorative autoplay is not decision evidence.
 
 ### Interface
 
 - Nearly chrome-free presentation. The right-edge rail is visible only while the inspector is collapsed, and clicking anywhere on it expands the inspector.
-- When expanded on desktop, the inspector is docked and resizes the artifact rather than overlaying it. Its larger collapse chevron sits in the inspector's top-right corner. End review sits at the bottom-right beside **Send feedback**; staged-revision reveal remains in the inspector rather than the collapsed rail.
+- When expanded on desktop, the inspector is docked and resizes the artifact rather than overlaying it. Its larger collapse chevron sits in the inspector's top-right corner. End review sits at the bottom-right beside the context-sensitive approval/revision actions.
+- Revision readiness is a blocking full-page curtain whose only forward action is **See latest revision**. It is a lifecycle boundary, not an automatic page refresh and not an authored-artifact layout gate.
+- The draft pane shows one concise instruction—“Hold Alt/Option and click any element to leave feedback.”—does not repeat it as an empty state, and keeps an unlabeled **Additional feedback** composer aligned immediately above the bottom action bar. Queuing that composer creates a normal general comment with a stable identity rather than a packet-level note. Additional feedback has no manual resize grip and grows vertically to fit its content. Draft editors use the approved compact edge-rail treatment: one content-sized line at rest, automatic vertical growth only when text wraps, no manual resize grip, and a red borderless trash-can delete action whose full-size target stays vertically centered as the comment grows. The edge rail is the editing-state signal; focusing the text itself does not add another rectangular outline. The end-review stop glyph remains compact but visually prominent.
+- The inspector has **Feedback** and **History** tabs. Feedback is the sole action surface: it combines private drafts, a persistent revision-request delivery state, and every submitted non-accepted comment. An element-anchored draft label or submitted-feedback card is navigable: activating it scrolls the visible artifact to the associated element and briefly outlines that target, preferring the visible revision's reported amendment selector when available. Sent comments remain visible while waiting for or being worked by the agent; Accept/Reopen appears only after the agent reports an amendment. Accepted items disappear from Feedback. History is a read-only revision-cycle ledger of revealed snapshots, submitted comments, amendment evidence, and current reviewer state; it never exposes staged revision evidence before reveal.
+- “Draft” remains an internal lifecycle term rather than reviewer-facing navigation.
 - Compact first: one recommendation, at most three primary options, short tradeoffs, and collapsed supporting evidence.
-- Show actual visual or motion specimens for visual decisions. Styled, non-editable diagrams are acceptable for routine architecture explanations.
+- Show actual visual or motion specimens for visual decisions. When behavior matters, specimens are operable and expose representative states; styled, non-editable diagrams remain acceptable for routine architecture explanations.
 - Agent presence is limited to lifecycle state and short replies; full conversation remains in Codex or Claude Code.
 - Blueprint does not automatically inherit a workspace design system. Explicit user or agent instructions that state a preferred design system for Blueprint artifacts may supply one.
 - Runtime review chrome does not rewrite the artifact's authored styling.
@@ -61,23 +77,26 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 
 - The full-system candidate was explicitly approved as Blueprint's visual source of truth on 2026-08-28, without refinement notes. The durable implementation-facing contract is `docs/VISUAL_SYSTEM.md`; `.lavish/` is local review state and is not required to reconstruct the decision.
 - The previously recorded calm, dark, editorial/instrument direction was an agent-authored synthesis of Lavish and Franky cues. The reviews approved interaction behavior and the requirement for visual specimens, but never asked for or received approval of that palette, typography, or component language.
-- The current dark review shell and revised Fieldnote example remain useful behavioral-test specimens only. They are not visual authority and must not silently become the product default.
+- The former dark review shell and revised Fieldnote example remain useful behavioral-test specimens only. They are not visual authority or the product default.
 - The approved direction uses Franky's diagnostic color scheme, one unified visual system across the review shell and default authored artifacts, and a uniform fine 24-pixel non-blue graphite grid at low contrast.
 - Its grammar is near-black graphite canvas, slate structure, cyan interaction signal, restrained semantic colors, compact system sans with monospace controls/state/evidence, crisp one-pixel borders, minimally rounded geometry, dense controls, and generous document-scale whitespace.
-- A subsequent explicit refinement reserves the earlier brass meta-band treatment for reviewer-facing instructions inside authored artifacts. “Meta” means content about operating or interpreting the review—review protocol, choice instructions, scope/authority, queueing, and submission—not the artifact's subject, ordinary warnings, recommendations, or status. The dark token is `#d8a34d` over `rgba(216, 163, 77, .11)`; the light token is `#81500f` over `rgba(129, 80, 15, .09)`, with a brass border, four-pixel leading rule, and faint diagonal stripe.
+- A subsequent explicit refinement reserves the earlier brass meta-band treatment for reviewer-facing instructions in authored artifacts and the runtime's single review-operation instruction. “Meta” means content about operating or interpreting the review—review protocol, choice instructions, scope/authority, queueing, and submission—not the artifact's subject, ordinary warnings, recommendations, or status. The dark token is `#d8a34d` over `rgba(216, 163, 77, .11)`; the light token is `#81500f` over `rgba(129, 80, 15, .09)`, with a brass border, four-pixel leading rule, and faint diagonal stripe.
 - Explicit user or Blueprint-specific repository instructions may override the default for an artifact. Unrelated workspace styling is never inherited automatically.
-- The approval establishes visual direction and authoring guidance. Runtime review-chrome implementation remains a separate authority gate, and the running behavior-test session must not be silently restyled.
+- The user separately approved runtime review-chrome implementation on 2026-08-28. The shell and exact-target preview now use the approved graphite, slate, cyan, and restrained semantic system while preserving the existing interaction and reviewer-authority contracts.
 
-### Packet composition and verification
+### Feedback composition and history
 
 - Draft comments remain in chronological order; the composer has no manual move-earlier or move-later controls.
-- Individual drafts retain stable identities and remain editable, includable/excludable, and subordinate to an optional packet-level note.
+- Individual drafts retain stable identities, source revisions, and editability. Every draft left in the composer is part of the chosen submission; deleting a draft is the only exclusion action.
+- **Approve** sends a final intent-bearing batch and ends the review, with or without comments. After successful persistence, the shell stops polling and accepting annotation input, blanks the artifact iframe, hides the review application, and shows only a terminal completion screen. The queued final packet remains available to the attached agent wait. **Revise using feedback** appears only when there is valid feedback, sends a revise intent, clears only the sent batch, and keeps the session open for additional batches.
+- A revision submission produces one centered dimmed-overlay confirmation, remains fully visible for roughly a couple of seconds, then fades without blocking continued review. The Feedback pane is the durable receipt: queued revise batches read as waiting for the agent, acknowledged batches read as agent working, and submitted comment text remains visible until accepted after a reported amendment.
 - Blueprint may suggest possible duplicates but must not merge them automatically.
-- Verification preserves original artifact order with optional status filters.
-- Revision evidence is collapsed by default and revealed per comment on demand.
+- Non-accepted review items preserve original artifact order in Feedback. History is grouped by revealed revision cycle, newest first, and is loaded on demand from immutable packet and report records.
+- A revision report may cover multiple revise batches. Each addressed or changed item records before, after, summary, evidence, and a selector; the revealed artifact marks that selector and the inspector can focus it on demand.
+- An amended-element marker remains visible only while its feedback item awaits reviewer acceptance. Accepting the item removes the marker and its Feedback card immediately without discarding the read-only evidence retained in History.
 - Batch acceptance is guarded and excludes stale or unaddressed items.
 - Reopening an item requires a short follow-up note explaining what remains wrong.
-- “Copy packet” appears only in the recovery path when delivery acknowledgement is in trouble; it does not occupy the normal control rail.
+- **Copy feedback** appears only in the recovery path when delivery acknowledgement is in trouble; it does not occupy the normal control rail.
 
 ### Output, privacy, and safety
 
@@ -85,6 +104,7 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - Sandboxed review and local operation are defaults.
 - No telemetry.
 - External publishing is outside the core product.
+- Public npm publication is not authorized by the local AXI implementation. The current package remains private and unlicensed until package identity and license are explicitly approved.
 
 ## Keep / modify / remove from Lavish
 
@@ -98,7 +118,7 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 | Image attachments | Keep, quiet | Available from annotation/draft UI without dominating it. |
 | Portable export | Keep | Clean HTML, with review machinery excluded. |
 | Browser chrome | Replace | Slim edge rail and contextual inspector. |
-| Prompt queue | Replace | Durable private drafts become one editable packet with acknowledged delivery. |
+| Prompt queue | Replace | Durable private drafts become one editable feedback submission with acknowledged delivery. |
 | Live reload | Replace | Stage revisions silently; reviewer explicitly reveals them. |
 | Comment lifecycle | Add | Stable IDs, addressed/open/stale states, human accept/reopen. |
 | Agent conversation | Reduce | Status and short replies only. |
@@ -128,16 +148,16 @@ The following remain testing hypotheses rather than reasons to delay the first u
 
 - A narrow screen uses a sheet even though the desktop inspector is docked; the mobile behavior was not separately selected in the review.
 - Resizing the artifact beside a docked inspector is preferable despite possible content reflow and anchor movement.
-- Fixed chronological packet order remains usable as comment count grows.
+- Fixed chronological feedback order remains usable as comment count grows.
 - A required reopen note remains helpful rather than burdensome in repeated review cycles.
 
 ## Approved minimum architecture
 
-The first user-testing slice uses one loopback Node.js process, a framework-free trusted browser shell, a sandboxed artifact iframe, atomic per-session files, immutable snapshots and packets, and one adapter-neutral long-wait CLI. The complete behavior and failure contract is recorded in `docs/ARCHITECTURE.md`.
+The first user-testing slice uses one loopback Node.js process, a framework-free trusted browser shell, a sandboxed artifact iframe, atomic per-session files, immutable snapshots and intent-bearing packets, and one adapter-neutral long-wait CLI. The complete behavior and failure contract is recorded in `docs/ARCHITECTURE.md`.
 
-For this slice, packet delivery is at least once and duplicate-safe by packet ID; a packet remains queued until the CLI has fully written it and acknowledged it. The initial snapshot is visible immediately after the requested launch. Staging never changes the visible revision; staged-revision reveal, accept, reopen, and end-session remain reviewer-only actions.
+For this slice, packet delivery is at least once and duplicate-safe by packet ID; a packet remains queued until the CLI has fully written it and acknowledged it. The initial snapshot is visible immediately after the requested launch. Approval ends the session, **Revise using feedback** keeps it active, and staging never changes the visible revision. The blocking reveal action, accept, reopen, approval, and end-session remain reviewer-only actions.
 
-The initial reuse decision is to copy no implementation code from Lavish. Export schemas, attachments, non-self-contained artifacts, production adapter wrappers, and packaging remain deferred until real sessions show what is needed.
+The initial reuse decision is to copy no implementation code from Lavish. Export schemas, attachments, non-self-contained artifacts, public distribution, marketplace packaging, and desktop packaging remain deferred until real sessions show what is needed.
 
 ## Evidence gate for implementation
 
@@ -147,3 +167,7 @@ Implementation should begin only after the user explicitly approves both gates:
 2. Architecture/protocol contract — **satisfied on 2026-08-28 for the minimum credible core described in `docs/ARCHITECTURE.md`**.
 
 The user separately authorized local implementation of that exact vertical slice on 2026-08-28. This authority does not extend to deferred product mechanisms, external publishing, production packaging, or upstream code reuse.
+
+The user additionally approved making Blueprint a formal AXI and authorized the first local implementation slice on 2026-08-29. That approval covers the documented CLI ergonomics, versioned playbooks, generated skill, reversible hook setup/status/removal, tests, and a local npm tarball. It does not authorize public npm publication, a license choice, a marketplace submission, or modifying the user's actual Codex or Claude Code configuration.
+
+The user then approved the final-approval/revision-request lifecycle on 2026-08-29 through a submitted review: final **Approve**, blocking revision-ready curtain, and feedback-linked change map. That approval covers the local protocol, browser shell, agent guidance, and validation implemented here; it does not expand any external or distribution authority.

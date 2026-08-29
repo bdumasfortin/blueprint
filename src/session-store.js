@@ -6,9 +6,10 @@ import { assertSelfContainedHtml } from "./artifact.js";
 import { atomicWriteJson, readJson, writeImmutableFile } from "./atomic.js";
 import { canonicalArtifactPath, pathKeyFor, resolveInside } from "./paths.js";
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const ID_PATTERN = /^[a-zA-Z0-9._:-]{1,120}$/;
 const REPORT_STATUSES = new Set(["addressed", "changed", "stale"]);
+const PACKET_INTENTS = new Set(["approve", "revise"]);
 
 export class BlueprintError extends Error {
   constructor(message, status = 400, code = "invalid_request") {
@@ -48,8 +49,17 @@ function safeId(value, label) {
 }
 
 function safeAnchor(value) {
-  if (!value || typeof value !== "object" || value.type !== "element") {
-    throw new BlueprintError("Each draft needs an element anchor.");
+  if (!value || typeof value !== "object" || !["element", "general"].includes(value.type)) {
+    throw new BlueprintError("Each draft needs an element or general-feedback anchor.");
+  }
+  if (value.type === "general") {
+    return {
+      type: "general",
+      quote: "General feedback",
+      prefix: "",
+      suffix: "",
+      selector: "",
+    };
   }
   return {
     type: value.type,
@@ -65,6 +75,32 @@ function tokenMatches(actual, expected) {
   const expectedBuffer = Buffer.from(expected);
   return actualBuffer.length === expectedBuffer.length
     && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function migrateManifest(manifest) {
+  if (manifest?.schemaVersion === SCHEMA_VERSION) return manifest;
+  if (manifest?.schemaVersion !== 1) return manifest;
+
+  manifest.schemaVersion = SCHEMA_VERSION;
+  for (const revision of manifest.revisions ?? []) {
+    revision.basisPacketIds = Array.isArray(revision.basisPacketIds)
+      ? revision.basisPacketIds
+      : revision.packetId ? [revision.packetId] : [];
+  }
+  for (const draft of manifest.drafts ?? []) {
+    draft.sourceRevisionId ??= manifest.visibleRevisionId;
+  }
+  for (const packet of manifest.packets ?? []) {
+    packet.intent ??= "revise";
+  }
+  return manifest;
+}
+
+function packetForDelivery(packet) {
+  if (packet?.schemaVersion === 1 && !packet.intent) {
+    return { ...packet, intent: "revise" };
+  }
+  return packet;
 }
 
 export class SessionStore {
@@ -134,6 +170,7 @@ export class SessionStore {
       }
       throw error;
     }
+    manifest = migrateManifest(manifest);
     if (manifest.schemaVersion !== SCHEMA_VERSION || manifest.sessionId !== sessionId) {
       throw new BlueprintError("Review session state is incompatible or damaged.", 500, "state_invalid");
     }
@@ -196,6 +233,12 @@ export class SessionStore {
     return resolveInside(this.sessionDirectory(manifest.sessionId), ...packetSummary.path.split("/"));
   }
 
+  reportPath(manifest, revision) {
+    if (!revision.reportId) return null;
+    const reportFile = `${String(revision.sequence).padStart(4, "0")}-${revision.reportId}.json`;
+    return resolveInside(this.sessionDirectory(manifest.sessionId), "reports", reportFile);
+  }
+
   async commit(manifest) {
     manifest.updatedAt = this.now();
     await atomicWriteJson(this.manifestPath(manifest.sessionId), manifest);
@@ -253,6 +296,7 @@ export class SessionStore {
         source: "open",
         reportId: null,
         packetId: null,
+        basisPacketIds: [],
       };
 
       await writeImmutableFile(
@@ -302,12 +346,16 @@ export class SessionStore {
     if (kind === "reopen" && (!existingFeedback || existingFeedback.state !== "reopen-draft")) {
       throw new BlueprintError(`Reopen draft ${id} is not attached to reopened feedback.`);
     }
+    const sourceRevisionId = safeId(raw.sourceRevisionId ?? manifest.visibleRevisionId, "Draft source revision");
+    if (!manifest.revisions.some((revision) => revision.id === sourceRevisionId)) {
+      throw new BlueprintError(`Draft ${id} references unknown revision ${sourceRevisionId}.`);
+    }
     return {
       id,
       kind,
       body: safeString(raw.body ?? "", "Draft body", 10_000),
-      included: raw.included !== false,
       createdAt: typeof raw.createdAt === "string" ? raw.createdAt : this.now(),
+      sourceRevisionId,
       anchor: safeAnchor(raw.anchor),
     };
   }
@@ -332,13 +380,15 @@ export class SessionStore {
         }
       }
       manifest.drafts = drafts;
-      manifest.packetNote = safeString(payload.packetNote ?? "", "Packet note", 10_000);
+      manifest.packetNote = safeString(payload.packetNote ?? "", "Additional feedback", 10_000);
       await this.commit(manifest);
       return this.browserStateFromManifest(manifest);
     });
   }
 
-  async sendPacket(reviewToken) {
+  async sendPacket(reviewToken, options = {}) {
+    const intent = Object.hasOwn(options, "intent") ? options.intent : "revise";
+    if (!PACKET_INTENTS.has(intent)) throw new BlueprintError("Feedback intent must be approve or revise.");
     const initial = await this.loadByReviewToken(reviewToken);
     return this.withLock(`session:${initial.sessionId}`, async () => {
       const manifest = await this.loadByReviewToken(reviewToken);
@@ -346,23 +396,39 @@ export class SessionStore {
       if (!manifest.visibleRevisionId) {
         throw new BlueprintError("Reveal the artifact before sending feedback.", 409);
       }
-      const included = manifest.drafts.filter((draft) => draft.included);
-      if (included.length === 0 && !manifest.packetNote.trim()) {
-        throw new BlueprintError("Include at least one draft or a packet note before sending.");
+      const createdAt = this.now();
+      const submittedDrafts = [...manifest.drafts];
+      if (manifest.packetNote.trim()) {
+        submittedDrafts.push({
+          id: `feedback-${this.uuid()}`,
+          kind: "initial",
+          body: manifest.packetNote.trim(),
+          createdAt,
+          sourceRevisionId: manifest.visibleRevisionId,
+          anchor: {
+            type: "general",
+            quote: "General feedback",
+            prefix: "",
+            suffix: "",
+            selector: "",
+          },
+        });
       }
-      for (const draft of included) {
-        safeString(draft.body, "Included draft body", 10_000, { required: true });
+      if (intent === "revise" && submittedDrafts.length === 0) {
+        throw new BlueprintError("Add at least one comment before requesting a revision.");
+      }
+      for (const draft of submittedDrafts) {
+        safeString(draft.body, "Draft body", 10_000, { required: true });
       }
 
-      const createdAt = this.now();
       const packetId = `pkt-${this.uuid()}`;
       const sequence = manifest.packets.length + 1;
-      const comments = included.map((draft) => ({
+      const comments = submittedDrafts.map((draft) => ({
         id: draft.id,
         kind: draft.kind,
         body: draft.body.trim(),
         anchor: draft.anchor,
-        sourceRevisionId: manifest.visibleRevisionId,
+        sourceRevisionId: draft.sourceRevisionId ?? manifest.visibleRevisionId,
         createdAt: draft.createdAt,
       }));
       const packet = {
@@ -370,10 +436,12 @@ export class SessionStore {
         id: packetId,
         sessionId: manifest.sessionId,
         sequence,
+        intent,
         createdAt,
         artifact: { name: path.basename(manifest.artifactPath) },
         sourceRevisionId: manifest.visibleRevisionId,
-        note: manifest.packetNote.trim(),
+        submittedFromRevisionId: manifest.visibleRevisionId,
+        note: "",
         comments,
       };
 
@@ -424,14 +492,24 @@ export class SessionStore {
       manifest.packets.push({
         id: packetId,
         sequence,
+        intent,
+        sourceRevisionId: manifest.visibleRevisionId,
         path: relativePacketPath,
         createdAt,
         status: "queued",
         deliveredAt: null,
       });
-      const includedIds = new Set(included.map((draft) => draft.id));
-      manifest.drafts = manifest.drafts.filter((draft) => !includedIds.has(draft.id));
+      manifest.drafts = [];
       manifest.packetNote = "";
+      if (intent === "approve") {
+        for (const feedback of manifest.feedback) {
+          feedback.state = "accepted";
+          feedback.acceptedAt = createdAt;
+          delete feedback.reopenFromState;
+        }
+        manifest.status = "ended";
+        manifest.endedAt = createdAt;
+      }
       await this.commit(manifest);
       return packet;
     });
@@ -443,7 +521,7 @@ export class SessionStore {
     const manifest = await this.loadLatestForCanonical(canonicalPath);
     const queued = manifest.packets.find((packet) => packet.status === "queued");
     if (!queued) return null;
-    return readJson(this.packetPath(manifest, queued));
+    return packetForDelivery(await readJson(this.packetPath(manifest, queued)));
   }
 
   async acknowledgePacket(sessionId, packetId) {
@@ -466,9 +544,26 @@ export class SessionStore {
     if (typeof report !== "object" || Array.isArray(report)) {
       throw new BlueprintError("Agent report must be an object.");
     }
-    const packetId = safeId(report.packetId, "Report packet");
-    if (!manifest.packets.some((packet) => packet.id === packetId)) {
-      throw new BlueprintError(`Report references unknown packet ${packetId}.`);
+    const reportSchemaVersion = report.schemaVersion ?? 1;
+    if (![1, 2].includes(reportSchemaVersion)) {
+      throw new BlueprintError("Agent report schema version is unsupported.");
+    }
+    const rawBasisPacketIds = reportSchemaVersion === 2
+      ? report.basisPacketIds
+      : [report.packetId];
+    if (!Array.isArray(rawBasisPacketIds) || rawBasisPacketIds.length === 0) {
+      throw new BlueprintError("Agent report needs at least one basis packet.");
+    }
+    const basisPacketIds = rawBasisPacketIds.map((packetId) => safeId(packetId, "Report packet"));
+    if (new Set(basisPacketIds).size !== basisPacketIds.length) {
+      throw new BlueprintError("Agent report repeats a basis packet.");
+    }
+    for (const packetId of basisPacketIds) {
+      const packet = manifest.packets.find((item) => item.id === packetId);
+      if (!packet) throw new BlueprintError(`Report references unknown packet ${packetId}.`);
+      if (reportSchemaVersion === 2 && packet.intent !== "revise") {
+        throw new BlueprintError(`Report packet ${packetId} did not request a revision.`);
+      }
     }
     if (!Array.isArray(report.comments)) throw new BlueprintError("Agent report comments must be an array.");
     const seen = new Set();
@@ -476,20 +571,49 @@ export class SessionStore {
       const commentId = safeId(item?.commentId, "Report comment");
       if (seen.has(commentId)) throw new BlueprintError(`Report repeats feedback ${commentId}.`);
       seen.add(commentId);
-      if (!manifest.feedback.some((feedback) => feedback.id === commentId)) {
+      const feedback = manifest.feedback.find((item) => item.id === commentId);
+      if (!feedback) {
         throw new BlueprintError(`Report references unknown feedback ${commentId}.`);
+      }
+      if (!feedback.history.some((entry) => basisPacketIds.includes(entry.packetId))) {
+        throw new BlueprintError(`Report feedback ${commentId} is not part of its basis packets.`);
       }
       if (!REPORT_STATUSES.has(item.status)) {
         throw new BlueprintError(`Report status for ${commentId} is invalid.`);
       }
-      return {
+      const normalized = {
         commentId,
         status: item.status,
         summary: safeString(item.summary, "Report summary", 2_000, { required: true }).trim(),
-        evidence: safeString(item.evidence ?? "", "Report evidence", 5_000).trim(),
+        evidence: safeString(item.evidence ?? "", "Report evidence", 5_000, {
+          required: reportSchemaVersion === 2,
+        }).trim(),
       };
+      if (reportSchemaVersion === 2) {
+        normalized.before = safeString(item.before ?? "", "Report before value", 5_000, {
+          required: item.status !== "stale",
+        }).trim();
+        normalized.after = safeString(item.after ?? "", "Report after value", 5_000, {
+          required: item.status !== "stale",
+        }).trim();
+        normalized.selector = safeString(item.selector ?? "", "Report selector", 1_000, {
+          required: item.status !== "stale",
+        }).trim();
+      }
+      return normalized;
     });
-    return { packetId, comments };
+    if (reportSchemaVersion === 2) {
+      const requiredFeedbackIds = new Set(
+        manifest.feedback
+          .filter((feedback) => feedback.history.some((entry) => basisPacketIds.includes(entry.packetId)))
+          .map((feedback) => feedback.id),
+      );
+      const missing = [...requiredFeedbackIds].filter((feedbackId) => !seen.has(feedbackId));
+      if (missing.length) {
+        throw new BlueprintError(`Agent report omits feedback ${missing[0]} from its basis packets.`);
+      }
+    }
+    return { schemaVersion: reportSchemaVersion, basisPacketIds, comments };
   }
 
   async stageArtifact(inputPath, rawReport = null) {
@@ -521,7 +645,8 @@ export class SessionStore {
           id: reportId,
           sessionId: manifest.sessionId,
           revisionId,
-          packetId: report.packetId,
+          packetId: report.basisPacketIds[0],
+          basisPacketIds: report.basisPacketIds,
           createdAt,
           comments: report.comments,
         };
@@ -545,6 +670,7 @@ export class SessionStore {
         source: "agent",
         reportId: reportRecord?.id ?? null,
         packetId: reportRecord?.packetId ?? null,
+        basisPacketIds: reportRecord?.basisPacketIds ?? [],
       };
       manifest.revisions.push(revision);
       manifest.stagedRevisionId = revisionId;
@@ -557,6 +683,9 @@ export class SessionStore {
             status: reportComment.status,
             summary: reportComment.summary,
             evidence: reportComment.evidence,
+            before: reportComment.before ?? "",
+            after: reportComment.after ?? "",
+            selector: reportComment.selector ?? "",
             createdAt,
           };
         }
@@ -565,6 +694,7 @@ export class SessionStore {
       return { revision: publicRevision(revision), report: reportRecord && {
         id: reportRecord.id,
         packetId: reportRecord.packetId,
+        basisPacketIds: reportRecord.basisPacketIds,
         comments: reportRecord.comments,
       } };
     });
@@ -621,8 +751,8 @@ export class SessionStore {
         id: feedback.id,
         kind: "reopen",
         body: note,
-        included: true,
         createdAt: this.now(),
+        sourceRevisionId: manifest.visibleRevisionId,
         anchor: feedback.anchor,
       });
       await this.commit(manifest);
@@ -668,8 +798,92 @@ export class SessionStore {
     const manifest = await this.loadByReviewToken(reviewToken);
     const state = this.browserStateFromManifest(manifest);
     const latest = manifest.packets.at(-1);
-    state.latestPacket = latest ? await readJson(this.packetPath(manifest, latest)) : null;
+    state.latestPacket = latest
+      ? packetForDelivery(await readJson(this.packetPath(manifest, latest)))
+      : null;
     return state;
+  }
+
+  async getReviewHistory(reviewToken) {
+    const manifest = await this.loadByReviewToken(reviewToken);
+    const visibleRevision = manifest.revisions.find((item) => item.id === manifest.visibleRevisionId) ?? null;
+    const visibleRevisions = visibleRevision
+      ? manifest.revisions.filter((item) => item.sequence <= visibleRevision.sequence)
+      : [];
+    const visibleBasisPacketIds = new Set(
+      visibleRevisions.flatMap((revision) => revision.basisPacketIds ?? []),
+    );
+    const packetRecords = new Map(await Promise.all(manifest.packets.map(async (summary) => {
+      const packet = packetForDelivery(await readJson(this.packetPath(manifest, summary)));
+      return [summary.id, packet];
+    })));
+    const feedbackById = new Map(manifest.feedback.map((feedback) => [feedback.id, feedback]));
+
+    const commentRecord = (comment, packet) => ({
+      id: comment.id,
+      kind: comment.kind,
+      body: comment.body,
+      anchor: comment.anchor,
+      sourceRevisionId: comment.sourceRevisionId,
+      packetId: packet.id,
+      packetIntent: packet.intent,
+      createdAt: comment.createdAt ?? packet.createdAt,
+    });
+
+    const revisionCycles = await Promise.all(visibleRevisions.map(async (revision) => {
+      const basisPackets = (revision.basisPacketIds ?? [])
+        .map((packetId) => packetRecords.get(packetId))
+        .filter(Boolean);
+      const report = revision.reportId
+        ? await readJson(this.reportPath(manifest, revision))
+        : null;
+      return {
+        id: revision.id,
+        kind: revision.source === "open" ? "initial" : "revision",
+        state: revision.id === manifest.visibleRevisionId ? "visible" : "superseded",
+        createdAt: revision.createdAt,
+        revision: publicRevision(revision),
+        packetIds: basisPackets.map((packet) => packet.id),
+        comments: basisPackets.flatMap((packet) => packet.comments.map((comment) => commentRecord(comment, packet))),
+        amendments: (report?.comments ?? []).map((item) => {
+          const feedback = feedbackById.get(item.commentId);
+          return {
+            commentId: item.commentId,
+            status: item.status,
+            summary: item.summary,
+            evidence: item.evidence ?? "",
+            before: item.before ?? "",
+            after: item.after ?? "",
+            selector: item.selector ?? "",
+            feedbackState: feedback?.state ?? "unknown",
+            acceptedAt: feedback?.acceptedAt ?? null,
+          };
+        }),
+      };
+    }));
+
+    const pendingCycles = manifest.packets
+      .filter((summary) => !visibleBasisPacketIds.has(summary.id))
+      .map((summary) => {
+        const packet = packetRecords.get(summary.id);
+        return {
+          id: `pending-${summary.id}`,
+          kind: packet.intent === "approve" ? "approval" : "feedback",
+          state: summary.status === "queued" ? "queued" : "awaiting-revision",
+          createdAt: packet.createdAt,
+          revision: null,
+          packetIds: [packet.id],
+          comments: packet.comments.map((comment) => commentRecord(comment, packet)),
+          amendments: [],
+        };
+      });
+
+    return {
+      schemaVersion: 1,
+      updatedAt: manifest.updatedAt,
+      cycles: [...pendingCycles, ...revisionCycles].sort((left, right) =>
+        right.createdAt.localeCompare(left.createdAt)),
+    };
   }
 
   async readRevision(artifactToken, revisionId) {

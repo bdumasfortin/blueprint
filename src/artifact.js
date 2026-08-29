@@ -57,6 +57,9 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
   const TYPE = "blueprint:annotation";
   let modifierHeld = false;
   let pointerPosition = null;
+  let changeItems = [];
+  let focusedSelector = "";
+  let focusTimer;
 
   const previewHost = document.createElement("div");
   previewHost.dataset.blueprintTargetPreview = "";
@@ -66,8 +69,8 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
   const previewStyle = document.createElement("style");
   previewStyle.textContent = [
     ":host { all: initial; }",
-    ".outline { position: fixed; box-sizing: border-box; border: 2px solid #168cff; border-radius: 3px; background: rgba(22, 140, 255, .09); box-shadow: 0 0 0 1px rgba(255, 255, 255, .82), 0 0 0 3px rgba(22, 140, 255, .2); }",
-    ".label { position: fixed; box-sizing: border-box; max-width: calc(100vw - 12px); overflow: hidden; padding: 4px 7px; border: 1px solid rgba(255, 255, 255, .34); border-radius: 4px; background: #086fd1; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); color: #fff; font: 600 11px/1.2 ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }",
+    ".outline { position: fixed; box-sizing: border-box; border: 2px solid #43e5dd; border-radius: 2px; background: rgba(67, 229, 221, .09); box-shadow: 0 0 0 1px rgba(5, 7, 10, .86), 0 0 0 3px rgba(67, 229, 221, .22); }",
+    ".label { position: fixed; box-sizing: border-box; max-width: calc(100vw - 12px); overflow: hidden; padding: 4px 7px; border: 1px solid #43e5dd; border-radius: 2px; background: #081417; box-shadow: 0 3px 12px rgba(0, 0, 0, .38); color: #43e5dd; font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace; letter-spacing: .04em; text-overflow: ellipsis; white-space: nowrap; }",
   ].join("");
   const previewOutline = document.createElement("div");
   previewOutline.className = "outline";
@@ -75,6 +78,65 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
   previewLabel.className = "label";
   previewRoot.append(previewStyle, previewOutline, previewLabel);
   (document.body || document.documentElement).append(previewHost);
+
+  const changeHost = document.createElement("div");
+  changeHost.dataset.blueprintChangeMap = "";
+  changeHost.setAttribute("aria-hidden", "true");
+  changeHost.style.cssText = "position:fixed!important;inset:0!important;z-index:2147483646!important;pointer-events:none!important;";
+  const changeRoot = changeHost.attachShadow({ mode: "closed" });
+  const changeStyle = document.createElement("style");
+  changeStyle.textContent = [
+    ":host { all: initial; }",
+    ".change { position: fixed; box-sizing: border-box; border: 2px solid #74e996; border-radius: 2px; background: rgba(116, 233, 150, .08); box-shadow: 0 0 0 1px rgba(5, 7, 10, .86), 0 0 0 4px rgba(116, 233, 150, .14); }",
+    ".badge { position: absolute; left: -9px; top: -9px; min-width: 20px; height: 20px; padding: 0 5px; border: 1px solid #74e996; border-radius: 10px; background: #0a1711; color: #74e996; font: 700 10px/18px ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', monospace; text-align: center; }",
+    ".focus { position: fixed; box-sizing: border-box; border: 2px solid #43e5dd; border-radius: 2px; background: rgba(67, 229, 221, .1); box-shadow: 0 0 0 1px rgba(5, 7, 10, .9), 0 0 0 5px rgba(67, 229, 221, .2); }",
+  ].join("");
+  changeRoot.append(changeStyle);
+  (document.body || document.documentElement).append(changeHost);
+
+  function selectedElement(selector) {
+    if (typeof selector !== "string" || !selector) return null;
+    try { return document.querySelector(selector); }
+    catch { return null; }
+  }
+
+  function renderChangeMap() {
+    changeRoot.querySelectorAll(".change").forEach((node) => node.remove());
+    changeItems.forEach((item, index) => {
+      const element = selectedElement(item.selector);
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0 || rect.bottom < 0 || rect.right < 0
+        || rect.top > window.innerHeight || rect.left > window.innerWidth) return;
+      const outline = document.createElement("div");
+      outline.className = "change";
+      outline.style.left = Math.max(0, rect.left) + "px";
+      outline.style.top = Math.max(0, rect.top) + "px";
+      outline.style.width = Math.min(rect.right, window.innerWidth) - Math.max(0, rect.left) + "px";
+      outline.style.height = Math.min(rect.bottom, window.innerHeight) - Math.max(0, rect.top) + "px";
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = String(item.number ?? index + 1);
+      outline.append(badge);
+      changeRoot.append(outline);
+    });
+  }
+
+  function renderFocusTarget() {
+    changeRoot.querySelector(".focus")?.remove();
+    const element = selectedElement(focusedSelector);
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0 || rect.bottom < 0 || rect.right < 0
+      || rect.top > window.innerHeight || rect.left > window.innerWidth) return;
+    const outline = document.createElement("div");
+    outline.className = "focus";
+    outline.style.left = Math.max(0, rect.left) + "px";
+    outline.style.top = Math.max(0, rect.top) + "px";
+    outline.style.width = Math.min(rect.right, window.innerWidth) - Math.max(0, rect.left) + "px";
+    outline.style.height = Math.min(rect.bottom, window.innerHeight) - Math.max(0, rect.top) + "px";
+    changeRoot.append(outline);
+  }
 
   function selectorFor(element) {
     if (!(element instanceof Element)) return "body";
@@ -156,6 +218,48 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
     parent.postMessage({ type: TYPE, version: 1, detail }, "*");
   }
 
+  function responseStatus(form, message) {
+    const status = form.querySelector("[data-blueprint-response-status]");
+    if (status) status.textContent = message;
+  }
+
+  function responseLabel(name) {
+    const words = name.replace(/[_-]+/g, " ").trim();
+    return words ? words[0].toUpperCase() + words.slice(1) : "Selection";
+  }
+
+  function responseBody(form, prompt) {
+    const grouped = new Map();
+    for (const [name, rawValue] of new FormData(form).entries()) {
+      if (typeof rawValue !== "string" || !rawValue.trim()) continue;
+      const values = grouped.get(name) || [];
+      values.push(rawValue.trim());
+      grouped.set(name, values);
+    }
+    const lines = ["Decision response — " + prompt];
+    if (grouped.size === 0) lines.push("- No optional choices selected");
+    else grouped.forEach((values, name) => lines.push("- " + responseLabel(name) + ": " + values.join(", ")));
+    return lines.join("\n").slice(0, 10000);
+  }
+
+  function queueResponseForm(form) {
+    if (!form.reportValidity()) return;
+    const responseId = form.id.trim();
+    const prompt = (form.dataset.blueprintResponse || "").trim();
+    if (!/^[a-zA-Z0-9._:-]{1,60}$/.test(responseId) || !prompt) {
+      responseStatus(form, "This response form needs a unique safe id and a response prompt.");
+      return;
+    }
+    post({
+      type: "response",
+      responseId,
+      prompt: prompt.slice(0, 180),
+      body: responseBody(form, prompt),
+      selector: selectorFor(form),
+    });
+    responseStatus(form, "Queued in Feedback. Use Revise using feedback or Approve with feedback to send.");
+  }
+
   function targetElement(event) {
     const target = elementAt(event.clientX, event.clientY, event.target);
     if (!target) return;
@@ -186,8 +290,8 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
     hidePreview();
   }, true);
 
-  window.addEventListener("scroll", showPreview, true);
-  window.addEventListener("resize", showPreview);
+  window.addEventListener("scroll", () => { showPreview(); renderChangeMap(); renderFocusTarget(); }, true);
+  window.addEventListener("resize", () => { showPreview(); renderChangeMap(); renderFocusTarget(); });
   window.addEventListener("blur", () => {
     modifierHeld = false;
     hidePreview();
@@ -200,17 +304,60 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
   });
 
   window.addEventListener("message", (event) => {
-    if (event.source !== parent || event.data?.type !== "blueprint:modifier" || event.data?.version !== 1) return;
-    modifierHeld = event.data.active === true;
-    if (modifierHeld) showPreview();
-    else hidePreview();
+    if (event.source !== parent || event.data?.version !== 1) return;
+    if (event.data.type === "blueprint:modifier") {
+      modifierHeld = event.data.active === true;
+      if (modifierHeld) showPreview();
+      else hidePreview();
+      return;
+    }
+    if (event.data.type === "blueprint:change-map") {
+      changeItems = Array.isArray(event.data.items)
+        ? event.data.items.filter((item) => item && typeof item.selector === "string").slice(0, 200)
+        : [];
+      renderChangeMap();
+      return;
+    }
+    if (event.data.type === "blueprint:focus-change") {
+      const element = selectedElement(event.data.selector);
+      if (!element) return;
+      focusedSelector = event.data.selector;
+      clearTimeout(focusTimer);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      element.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center", inline: "nearest" });
+      renderFocusTarget();
+      setTimeout(renderFocusTarget, 350);
+      setTimeout(renderChangeMap, 350);
+      focusTimer = setTimeout(() => {
+        focusedSelector = "";
+        renderFocusTarget();
+      }, 1800);
+    }
   });
 
   document.addEventListener("click", (event) => {
-    if (!event.altKey) return;
+    if (event.altKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      targetElement(event);
+      return;
+    }
+    const submitter = event.target instanceof Element
+      ? event.target.closest('button[type="submit"], input[type="submit"]')
+      : null;
+    const form = submitter?.form;
+    if (!form?.matches("form[data-blueprint-response]") || !event.isTrusted) return;
     event.preventDefault();
-    event.stopPropagation();
-    targetElement(event);
+    queueResponseForm(form);
+  }, true);
+
+  document.addEventListener("submit", (event) => {
+    const form = event.target instanceof Element
+      ? event.target.closest("form[data-blueprint-response]")
+      : null;
+    if (!form || !event.isTrusted) return;
+    event.preventDefault();
+    queueResponseForm(form);
   }, true);
 })();
 </script>`;

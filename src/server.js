@@ -175,14 +175,20 @@ export async function startBlueprintServer(options = {}) {
           return sendJson(response, 200, await store.getBrowserState(reviewToken));
         }
 
+        if (request.method === "GET" && parts[3] === "history" && parts.length === 4) {
+          return sendJson(response, 200, await store.getReviewHistory(reviewToken));
+        }
+
         if (request.method === "PUT" && parts[3] === "drafts" && parts.length === 4) {
           const state = await store.replaceDrafts(reviewToken, await readJsonBody(request));
           return sendJson(response, 200, state);
         }
 
         if (request.method === "POST" && parts[3] === "send" && parts.length === 4) {
-          const packet = await store.sendPacket(reviewToken);
+          const body = await readJsonBody(request);
+          const packet = await store.sendPacket(reviewToken, { intent: body.intent });
           events.emit("packet");
+          events.emit("state");
           return sendJson(response, 200, packet);
         }
 

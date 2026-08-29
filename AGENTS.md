@@ -21,11 +21,12 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 - One human, one agent, one artifact.
 - Personal and local-first; colleagues use their own private installations.
 - Codex and Claude Code are the first-class agent adapters.
-- The reviewer initiates Blueprint through their agent and controls send, staged-revision reveal, verification, and session completion.
-- The requested initial launch displays the artifact immediately. A prepared revision must not steal focus, open itself, or silently replace visible content.
-- Feedback remains private and editable until the reviewer deliberately sends one bundled packet.
+- The reviewer initiates Blueprint through their agent and controls approval, revision requests, staged-revision reveal, review-item actions, history inspection, and session completion.
+- The requested initial launch displays the artifact immediately. A prepared revision presents a blocking **Revision is ready** curtain, but must not reveal itself or replace visible content until the reviewer chooses **See latest revision**.
+- Feedback remains private and editable until the reviewer deliberately chooses **Approve with feedback** or **Revise using feedback**. **Approve** is final and ends the review; **Revise using feedback** sends an intent-bearing batch and keeps the review active while the agent works.
+- Unsent drafts are revision-scoped and must survive staged-revision reveal. Never silently re-anchor them to the newly visible revision.
 - Agent delivery must be acknowledged; failures must preserve drafts and offer a recoverable copy path.
-- Stable comment identities survive revisions. The agent may report an item addressed; only the human may accept it or reopen it.
+- Stable comment identities survive revisions. A staged revision report must name every basis packet and, for each addressed or changed item, provide before, after, summary, evidence, and a selector for the amended element. The agent may report an item addressed; only the human may accept it or reopen it. Feedback is the sole action surface and contains drafts plus non-accepted review items. Accepting an item removes its marker and Feedback card; read-only History preserves its evidence in the revealed-revision ledger.
 - The reviewed HTML remains portable and authoritative. Local operation and sandboxing are default requirements.
 - No telemetry.
 - Compact-first communication: one recommendation, no more than three primary choices, short tradeoffs, evidence on demand.
@@ -37,7 +38,7 @@ Preserve conceptually: local HTML review, sandboxed rendering, precise element a
 
 Redesign: the browser chrome, annotation gesture, private draft queue, packet composer, delivery acknowledgement, staged revision reveal, connection status, comment lifecycle, verification, and optional final decision artifact.
 
-Exclude from Blueprint unless a later review reverses the decision: layout curtain/gate, layout-issues inbox, publishing shortcut or hosted sharing, DOM snapshot feedback, editable Mermaid/whiteboard mode, telemetry, multi-human collaboration, and full in-tool chat.
+Exclude from authored artifacts unless a later review reverses the decision: layout curtain/gate, layout-issues inbox, publishing shortcut or hosted sharing, DOM snapshot feedback, editable Mermaid/whiteboard mode, telemetry, multi-human collaboration, and full in-tool chat. The runtime's blocking revision-ready curtain is an approved lifecycle control, not an artifact layout gate.
 
 ## Blueprint artifact design
 
@@ -54,7 +55,9 @@ Exclude from Blueprint unless a later review reverses the decision: layout curta
 - Use Lavish for non-trivial product, UX, architecture, or implementation plans intended for user review.
 - Use a fresh artifact for each new review iteration. Do not reopen a concluded session as a shortcut.
 - Carry settled decisions forward visibly and do not ask them again without new evidence.
-- Every decision form must keep edits local until the reviewer chooses **Queue response**. Queue exactly one response per form; never auto-send or auto-end the session.
+- Every decision that asks the reviewer to choose must provide an operable labelled form when controls are useful: radios for mutually exclusive options, checkboxes or switches for independent choices, and selects for longer lists. Prefer selectable option cards backed by native inputs over click-only containers.
+- Every decision form must keep edits local until the reviewer chooses **Queue response**. Use a unique safe form `id`, `data-blueprint-response`, meaningful control names and values, and one submit action. Queue exactly one private Feedback draft per form; re-queueing replaces that unsent draft and never auto-sends or auto-ends the session.
+- UI examples and wireframes must demonstrate decision-relevant states, transitions, or microinteractions through keyboard-operable HTML when behavior affects the choice. Static specimens are acceptable only when interaction is irrelevant; motion must be restrained and honor `prefers-reduced-motion`.
 - Give the reviewer an explicit submission path. A browser-local selection is not feedback or authorization.
 - Open one tracked feedback wait per review and retain it until the reviewer sends feedback or ends the session.
 - Validate review contracts and visually inspect wide, narrow, light/dark where applicable before opening the review.

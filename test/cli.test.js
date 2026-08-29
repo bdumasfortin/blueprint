@@ -71,7 +71,7 @@ test("the CLI drives one acknowledged feedback and staged-revision cycle", async
   await api(`${browserBase}/drafts`, {
     method: "PUT",
     body: JSON.stringify({
-      packetNote: "Test the core cycle.",
+      packetNote: "",
       drafts: [{
         id: "feedback-cli-1",
         kind: "initial",
@@ -88,7 +88,10 @@ test("the CLI drives one acknowledged feedback and staged-revision cycle", async
       }],
     }),
   });
-  const packet = await api(`${browserBase}/send`, { method: "POST", body: "{}" });
+  const packet = await api(`${browserBase}/send`, {
+    method: "POST",
+    body: JSON.stringify({ intent: "revise" }),
+  });
 
   const waited = await execFile(
     process.execPath,
@@ -101,12 +104,16 @@ test("the CLI drives one acknowledged feedback and staged-revision cycle", async
 
   await writeFile(artifact, "<!doctype html><h1>Blueprint first heading</h1>");
   await writeFile(reportFile, JSON.stringify({
-    packetId: packet.id,
+    schemaVersion: 2,
+    basisPacketIds: [packet.id],
     comments: [{
       commentId: "feedback-cli-1",
       status: "addressed",
       summary: "Named Blueprint in the heading.",
       evidence: "The h1 now starts with Blueprint.",
+      before: "First heading",
+      after: "Blueprint first heading",
+      selector: "h1",
     }],
   }));
   const stagedProcess = await execFile(
@@ -119,6 +126,7 @@ test("the CLI drives one acknowledged feedback and staged-revision cycle", async
   assert.equal(state.visibleRevision.id, originalRevisionId);
   assert.equal(state.stagedRevision.id, staged.revision.id);
   assert.equal(state.feedback[0].latestReport.status, "addressed");
+  assert.equal(state.feedback[0].latestReport.after, "Blueprint first heading");
 });
 
 test("the CLI reports the approved visual authority without inheriting workspace design", async () => {
@@ -134,6 +142,12 @@ test("the CLI reports the approved visual authority without inheriting workspace
   assert.match(result.stdout, /uniform 24-pixel non-blue graphite grid/);
   assert.match(result.stdout, /distinct brass meta layer/);
   assert.match(result.stdout, /#d8a34d/);
+  assert.match(result.stdout, /operable labelled form/);
+  assert.match(result.stdout, /data-blueprint-response/);
+  assert.match(result.stdout, /Queue response/);
+  assert.match(result.stdout, /decision-relevant states, transitions, or microinteractions/);
+  assert.match(result.stdout, /prefers-reduced-motion/);
   assert.match(result.stdout, /Do not use this treatment for ordinary product content/);
-  assert.match(result.stdout, /does not by itself authorize restyling an active review session/);
+  assert.match(result.stdout, /Runtime review-chrome implementation was separately approved and completed/);
+  assert.match(result.stdout, /without rewriting authored artifact styles/);
 });

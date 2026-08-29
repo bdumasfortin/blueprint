@@ -1,0 +1,78 @@
+import { CliError, renderFields, renderList, renderTable } from "./axi.js";
+
+export const PLAYBOOK_VERSION = 5;
+
+export const PLAYBOOKS = Object.freeze([
+  {
+    id: "artifact",
+    useWhen: "Author a new portable HTML artifact for Blueprint review",
+    guidance: [
+      "Run `blueprint design` before authoring; it is the current visual authority.",
+      "Use HTML only when interaction or visual structure materially improves understanding over concise prose.",
+      "Lead with one recommendation or governing idea, then expose evidence and no more than three primary choices.",
+      "When the artifact asks for a choice, use an operable decision form: radios for mutually exclusive options, checkboxes or switches for independent choices, and a separate Queue response submit action. Give the form a unique safe id plus data-blueprint-response, and give every control a meaningful name and value.",
+      "For visual, layout, or motion choices, render a representative specimen for every option. When behavior affects the decision, make each specimen demonstrate useful states or transitions with real HTML controls; static mockups are valid only when interaction is irrelevant.",
+      "Keep selection local and reversible. Never queue on radio, checkbox, select, or option-card change; one explicit Queue response action creates or replaces one private Feedback draft for that form.",
+      "Keep the source self-contained, responsive, keyboard-readable, and free of Blueprint runtime code.",
+      "Reserve the brass meta band for instructions about operating or interpreting the review, never ordinary subject matter.",
+      "Verify wide and narrow layouts, keyboard operation, queued-response behavior, and every representative specimen state before opening the review.",
+    ],
+    next: [
+      "Run `blueprint playbook decision` when the artifact asks the reviewer to choose.",
+      "Run `blueprint playbook review-loop` before launching it.",
+    ],
+  },
+  {
+    id: "decision",
+    useWhen: "Explain a consequential plan or compare options before implementation",
+    guidance: [
+      "State the decision, recommendation, current evidence, and authority boundary at the top.",
+      "Present at most three mutually exclusive primary options and make the recommended option visually explicit.",
+      "Make mutually exclusive options selectable through a labelled radio group, preferably with the whole option card as its label. Use checkboxes or switches only for independently combinable choices, and a select only when a longer option list makes cards impractical.",
+      "Show concrete behavior or a representative wireframe for each visual option; prose-only visual choices are invalid. Demonstrate the states, transitions, or microinteractions that would materially affect the implemented experience, honor prefers-reduced-motion, and avoid decorative motion that supplies no decision evidence.",
+      "Expose benefits, costs, reversibility, risks, and unknowns at comparable levels of detail.",
+      "Carry settled decisions forward and do not ask them again without new evidence.",
+      "A selection remains browser-local until Queue response places one editable private draft in Feedback; re-queueing the same form replaces that unsent draft instead of adding another. Only an intent-bearing Approve with feedback or Revise using feedback submission authorizes the corresponding next action.",
+    ],
+    next: [
+      "Run `blueprint open <artifact.html>` only after the reviewer asks to launch the review.",
+      "Retain exactly one `blueprint wait <artifact.html>` until feedback is delivered.",
+    ],
+  },
+  {
+    id: "review-loop",
+    useWhen: "Open a Blueprint review, receive feedback, and stage a revision",
+    guidance: [
+      "Treat the HTML file as authoritative and the served revision as immutable evidence.",
+      "Run `blueprint open <artifact.html>`, then start exactly one attached `blueprint wait <artifact.html>`.",
+      "Do not act on unsent browser drafts. Wait returns one immutable intent-bearing JSON packet and acknowledges only after complete delivery.",
+      "Handle packet IDs idempotently because delivery is at least once.",
+      "An `approve` packet is final: the browser review surface retires after persistence; honor any attached comments and do not stage another revision or expect further browser feedback for that ended review.",
+      "A `revise` packet keeps the review active. Continue one attached wait while editing so later revise batches can join the same revision; replace a completed wait, but never run concurrent waits for one review.",
+      "The reviewer shell keeps sent comments visible and derives waiting-for-agent versus agent-working state from packet acknowledgement. Acknowledge promptly after complete delivery, and do not interpret a still-queued batch as agent work already underway.",
+      "Before staging, account for every revise packet used as a basis and report every comment in those packets. Use report schema version 2 with `basisPacketIds`; each addressed or changed comment needs `before`, `after`, `summary`, `evidence`, and the amended element's `selector`.",
+      "Edit the authoritative HTML, then run `blueprint stage <artifact.html> --report <report.json>`. Staging opens a blocking ready curtain but never reveals the new snapshot.",
+      "Only the reviewer may choose See latest revision, accept, reopen, approve, or end the session.",
+      "If the wait is interrupted, restart the same wait; never create concurrent waits for one review.",
+    ],
+    next: [
+      "Run `blueprint --help` for exact command syntax.",
+      "Run `blueprint playbook artifact` before authoring the next artifact.",
+    ],
+  },
+]);
+
+export function renderPlaybookIndex() {
+  return `${renderFields([["playbook_version", PLAYBOOK_VERSION], ["instruction", "Open every playbook that matches the task before authoring or launching."]])}\n${renderTable("playbooks", PLAYBOOKS, ["id", "useWhen"])}\n${renderList("help", ["Run `blueprint playbook <id>` for focused guidance."])}\n`;
+}
+
+export function renderPlaybook(id) {
+  const playbook = PLAYBOOKS.find((candidate) => candidate.id === id);
+  if (!playbook) {
+    throw new CliError("UNKNOWN_PLAYBOOK", `Unknown playbook: ${id}`, {
+      exitCode: 2,
+      help: ["Run `blueprint playbook` to list valid playbook IDs."],
+    });
+  }
+  return `${renderFields([["playbook_version", PLAYBOOK_VERSION], ["playbook", playbook.id], ["use_when", playbook.useWhen]])}\n${renderList("guidance", playbook.guidance)}\n${renderList("help", playbook.next)}\n`;
+}

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blueprint inspector — Feedback and History</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #05070a;
+      --panel: #0a1016;
+      --panel-2: #0d151d;
+      --line: #253341;
+      --line-strong: #3b4d5f;
+      --text: #e4ebef;
+      --muted: #8fa0ad;
+      --faint: #62727e;
+      --cyan: #43e5dd;
+      --green: #74e996;
+      --brass: #d8a34d;
+      --amber: #f0bd63;
+      --red: #ff777f;
+      --grid: rgba(79, 99, 114, .095);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--canvas); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--text);
+      background-color: var(--canvas);
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    button { font: inherit; }
+    .page { width: min(1440px, 100%); margin: 0 auto; padding: 0 28px 72px; }
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 62px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); }
+    .brand-mark { width: 16px; height: 16px; border: 1px solid var(--cyan); position: relative; }
+    .brand-mark::after { content: ""; position: absolute; left: 3px; top: 3px; width: 7px; height: 1px; background: var(--cyan); transform: rotate(-45deg); transform-origin: left center; }
+    .hero { padding: 52px 0 34px; border-bottom: 1px solid var(--line); }
+    .eyebrow, .label {
+      color: var(--cyan);
+      font: 700 10px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 920px; margin: 12px 0 16px; font-size: clamp(36px, 5vw, 70px); line-height: .98; letter-spacing: -.045em; }
+    .lede { max-width: 830px; margin: 0; color: #bdc9d0; font-size: 17px; line-height: 1.65; }
+    .meta-band {
+      margin-top: 28px;
+      padding: 15px 18px 15px 22px;
+      border: 1px solid rgba(216, 163, 77, .65);
+      border-left: 4px solid var(--brass);
+      background:
+        repeating-linear-gradient(-45deg, rgba(216, 163, 77, .03) 0 5px, transparent 5px 10px),
+        rgba(216, 163, 77, .09);
+      color: #ead2a3;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .meta-band strong { display: block; margin-bottom: 5px; color: var(--brass); font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    section { padding: 38px 0; border-bottom: 1px solid var(--line); }
+    .section-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 520px); gap: 40px; align-items: end; margin-bottom: 24px; }
+    h2 { margin: 8px 0 0; font-size: clamp(25px, 3vw, 40px); letter-spacing: -.025em; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .direction-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
+    .direction-card { min-height: 150px; padding: 22px; border: 1px solid var(--line); background: rgba(10, 16, 22, .9); }
+    .direction-card.recommended { border-color: rgba(116, 233, 150, .65); box-shadow: inset 4px 0 0 var(--green); }
+    .direction-card h3 { margin: 9px 0 10px; font-size: 19px; }
+    .direction-card p { margin: 0; color: var(--muted); line-height: 1.6; }
+    .pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
+    .pill { padding: 5px 8px; border: 1px solid var(--line); color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .pill.green { border-color: rgba(116, 233, 150, .5); color: var(--green); }
+    .wireframes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .option { border: 1px solid var(--line); background: rgba(8, 13, 18, .93); }
+    .option.recommended { border-color: rgba(67, 229, 221, .7); box-shadow: 0 0 0 1px rgba(67, 229, 221, .08); }
+    .option-head { min-height: 128px; padding: 18px; border-bottom: 1px solid var(--line); }
+    .option-head h3 { margin: 8px 0 8px; font-size: 18px; }
+    .option-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .recommendation { color: var(--green); }
+    .inspector { min-height: 650px; background: #090e13; }
+    .chrome { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 13px; border-bottom: 1px solid var(--line); color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+    .tab { padding: 12px 8px 10px; border-bottom: 2px solid transparent; color: var(--faint); text-align: center; font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .tab.active { border-color: var(--cyan); color: var(--cyan); background: rgba(67, 229, 221, .035); }
+    .mock-body { padding: 13px; }
+    .instruction { margin-bottom: 12px; padding: 10px 11px 10px 14px; border: 1px solid rgba(216, 163, 77, .5); border-left: 3px solid var(--brass); background: rgba(216, 163, 77, .08); color: #dfc590; font-size: 10px; line-height: 1.45; }
+    .group-label { display: flex; justify-content: space-between; margin: 16px 0 7px; color: var(--muted); font: 700 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .draft, .review-item, .history-card, .thread { margin-bottom: 9px; border: 1px solid var(--line); background: var(--panel-2); }
+    .draft { display: grid; grid-template-columns: 4px 1fr; }
+    .draft::before { content: ""; background: var(--cyan); }
+    .draft-content { padding: 9px 10px; }
+    .tiny { color: var(--faint); font: 700 8px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .copy { margin-top: 5px; color: #c8d2d8; font-size: 11px; line-height: 1.45; }
+    .review-item { padding: 11px; border-left: 3px solid var(--green); }
+    .review-item.accepted { border-left-color: var(--line-strong); opacity: .68; }
+    .item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .badge { padding: 4px 6px; border: 1px solid rgba(116, 233, 150, .45); color: var(--green); font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+    .badge.accepted { border-color: var(--line-strong); color: var(--muted); }
+    .change-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+    .change { min-height: 64px; padding: 8px; border: 1px solid var(--line); color: #c4cfd5; font-size: 9px; line-height: 1.45; }
+    .change strong { display: block; margin-bottom: 4px; color: var(--faint); font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 9px; }
+    .button { padding: 8px; border: 1px solid var(--line-strong); color: var(--text); text-align: center; font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .composer { margin-top: 12px; padding: 10px; border: 1px solid var(--line-strong); color: var(--faint); font-size: 10px; }
+    .timeline { position: relative; padding-left: 17px; }
+    .timeline::before { content: ""; position: absolute; left: 5px; top: 4px; bottom: 6px; width: 1px; background: var(--line-strong); }
+    .history-card { position: relative; padding: 11px; }
+    .history-card::before { content: ""; position: absolute; left: -17px; top: 14px; width: 9px; height: 9px; border: 1px solid var(--cyan); background: var(--canvas); }
+    .event { display: grid; grid-template-columns: 53px 1fr; gap: 8px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line); }
+    .event:first-of-type { border-top: 0; }
+    .event-type { color: var(--faint); font: 700 8px/1.35 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+    .event-text { color: #c8d2d8; font-size: 10px; line-height: 1.45; }
+    .thread { padding: 11px; }
+    .thread-step { position: relative; margin: 10px 0 0 10px; padding-left: 13px; border-left: 1px solid var(--line-strong); color: #c8d2d8; font-size: 10px; line-height: 1.45; }
+    .thread-step::before { content: ""; position: absolute; left: -4px; top: 3px; width: 7px; height: 7px; background: var(--line-strong); }
+    .matrix { width: 100%; border-collapse: collapse; background: rgba(8, 13, 18, .92); }
+    .matrix th, .matrix td { padding: 13px 14px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+    .matrix th { color: var(--muted); font: 700 9px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .matrix td { color: #c4cfd5; font-size: 12px; line-height: 1.5; }
+    .matrix tr.recommended td:first-child { box-shadow: inset 4px 0 0 var(--green); color: var(--text); font-weight: 700; }
+    .flow { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); }
+    .flow-step { position: relative; min-height: 130px; padding: 18px; border-right: 1px solid var(--line); background: rgba(10, 16, 22, .9); }
+    .flow-step:last-child { border-right: 0; }
+    .flow-step:not(:last-child)::after { content: "›"; position: absolute; right: -8px; top: 48px; z-index: 1; color: var(--cyan); font: 700 18px/1 ui-monospace, monospace; background: var(--canvas); }
+    .flow-step h3 { margin: 9px 0 7px; font-size: 14px; }
+    .flow-step p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .footer { padding-top: 28px; color: var(--faint); font: 700 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    @media (max-width: 980px) {
+      .wireframes { grid-template-columns: 1fr 1fr; }
+      .wireframes .option:first-child { grid-column: 1 / -1; }
+      .direction-grid, .section-head { grid-template-columns: 1fr; gap: 16px; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .flow-step:nth-child(2) { border-right: 0; }
+      .flow-step:nth-child(-n + 2) { border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 640px) {
+      .page { padding: 0 16px 52px; }
+      .masthead { min-height: 54px; }
+      .masthead > span:last-child { display: none; }
+      .hero { padding-top: 34px; }
+      .wireframes, .flow { grid-template-columns: 1fr; }
+      .wireframes .option:first-child { grid-column: auto; }
+      .flow-step { border-right: 0; border-bottom: 1px solid var(--line); }
+      .flow-step:last-child { border-bottom: 0; }
+      .flow-step::after { display: none; }
+      .matrix { display: block; overflow-x: auto; }
+      .inspector { min-height: 590px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Blueprint</div>
+      <span>Inspector information architecture / decision</span>
+    </header>
+
+    <section class="hero" aria-labelledby="title">
+      <div class="eyebrow">Requested direction</div>
+      <h1 id="title">Make Feedback the work surface. Make History the record.</h1>
+      <p class="lede">Accept and Reopen belong beside the comments they govern—not behind a separate Verify tab. The remaining choice is how History should organize past comments and amendments once they are no longer the reviewer’s immediate task.</p>
+      <div class="meta-band">
+        <strong>Review protocol</strong>
+        The two-tab direction is carried forward: <b>Feedback</b> contains drafts and every Accept/Reopen review item; <b>History</b> is read-only. Compare the two History specimens below. Approve to select the recommended revision-cycle ledger, or annotate a specimen and choose <b>Revise using feedback</b>.
+      </div>
+    </section>
+
+    <section aria-labelledby="direction-title">
+      <div class="section-head">
+        <div><div class="label">Settled versus open</div><h2 id="direction-title">One UX decision remains.</h2></div>
+        <p>This review does not reconsider whether review items move into Feedback or whether Verify becomes History. It decides only how the new read-only history is grouped.</p>
+      </div>
+      <div class="direction-grid">
+        <article class="direction-card recommended">
+          <div class="label recommendation">Settled direction</div>
+          <h3>Feedback owns every current action.</h3>
+          <p>Private drafts, Additional feedback, addressed items, accepted items, Accept, and Reopen share one scrollable surface. Accepted items retain their evidence but no longer highlight the artifact.</p>
+          <div class="pills"><span class="pill green">Feedback</span><span class="pill">Draft</span><span class="pill">Accept</span><span class="pill">Reopen</span></div>
+        </article>
+        <article class="direction-card">
+          <div class="label">Decision in this review</div>
+          <h3>How should History group the record?</h3>
+          <p>Both candidates show comments and amendments without exposing actions or creating another source of truth.</p>
+          <div class="pills"><span class="pill">Cycle ledger</span><span class="pill">Comment threads</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="specimens-title">
+      <div class="section-head">
+        <div><div class="label">Rendered specimens</div><h2 id="specimens-title">The combined Feedback view is shared.</h2></div>
+        <p>The first specimen is the agreed active-work surface. The next two show mutually exclusive History organizations using the same events.</p>
+      </div>
+      <div class="wireframes">
+        <article class="option">
+          <header class="option-head">
+            <div class="label">Shared / Feedback</div>
+            <h3>Drafts and review items together</h3>
+            <p>One place to write, inspect evidence, accept, and reopen. Items keep artifact order.</p>
+          </header>
+          <div class="inspector" aria-label="Combined Feedback tab specimen">
+            <div class="chrome"><span>triage-console.html</span><span>›</span></div>
+            <div class="tabs"><div class="tab active">Feedback 3</div><div class="tab">History</div></div>
+            <div class="mock-body">
+              <div class="instruction">Hold Alt/Option and click any element to leave feedback.</div>
+              <div class="group-label"><span>Private feedback</span><span>1 draft</span></div>
+              <div class="draft"><div class="draft-content"><div class="tiny">Queue density</div><div class="copy">Reduce the alert row height slightly.</div></div></div>
+              <div class="group-label"><span>Review items</span><span>2 items</span></div>
+              <div class="review-item">
+                <div class="item-head"><span class="badge">Addressed</span><span class="tiny">Revision 3</span></div>
+                <div class="copy">Make the incident owner easier to scan.</div>
+                <div class="change-pair"><div class="change"><strong>Before</strong>Owner in metadata row</div><div class="change"><strong>After</strong>Owner beside severity</div></div>
+                <div class="actions"><div class="button">Accept</div><div class="button">Reopen</div></div>
+              </div>
+              <div class="review-item accepted">
+                <div class="item-head"><span class="badge accepted">Accepted</span><span class="tiny">Revision 2</span></div>
+                <div class="copy">Clarify the escalation wording.</div>
+                <div class="actions"><div class="button">Accepted</div><div class="button">Reopen</div></div>
+              </div>
+              <div class="composer">Additional feedback</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="option recommended">
+          <header class="option-head">
+            <div class="label recommendation">Option A / Recommended</div>
+            <h3>Revision-cycle ledger</h3>
+            <p>Chronological groups show what was requested, what changed, and the resulting reviewer state.</p>
+          </header>
+          <div class="inspector" aria-label="Revision-cycle History specimen">
+            <div class="chrome"><span>triage-console.html</span><span>›</span></div>
+            <div class="tabs"><div class="tab">Feedback 3</div><div class="tab active">History 3</div></div>
+            <div class="mock-body">
+              <div class="group-label"><span>Newest first</span><span>3 revisions</span></div>
+              <div class="timeline">
+                <div class="history-card">
+                  <div class="item-head"><span class="badge">Revision 3</span><span class="tiny">Revealed 14:32</span></div>
+                  <div class="event"><div class="event-type">Comment</div><div class="event-text">Make the incident owner easier to scan.</div></div>
+                  <div class="event"><div class="event-type">Amended</div><div class="event-text">Owner moved beside severity. Before/after evidence retained.</div></div>
+                  <div class="event"><div class="event-type">State</div><div class="event-text">Awaiting acceptance in Feedback.</div></div>
+                </div>
+                <div class="history-card">
+                  <div class="item-head"><span class="badge accepted">Revision 2</span><span class="tiny">Revealed 13:48</span></div>
+                  <div class="event"><div class="event-type">Comment</div><div class="event-text">Clarify the escalation wording.</div></div>
+                  <div class="event"><div class="event-type">Amended</div><div class="event-text">Escalation action now names the owner and deadline.</div></div>
+                  <div class="event"><div class="event-type">State</div><div class="event-text">Accepted by reviewer.</div></div>
+                </div>
+                <div class="history-card">
+                  <div class="item-head"><span class="badge accepted">Revision 1</span><span class="tiny">Opened 12:51</span></div>
+                  <div class="event"><div class="event-type">Snapshot</div><div class="event-text">Initial artifact displayed.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="option">
+          <header class="option-head">
+            <div class="label">Option B / Alternative</div>
+            <h3>Comment-thread ledger</h3>
+            <p>Stable feedback identities become the top-level groups, with revisions nested inside each thread.</p>
+          </header>
+          <div class="inspector" aria-label="Comment-thread History specimen">
+            <div class="chrome"><span>triage-console.html</span><span>›</span></div>
+            <div class="tabs"><div class="tab">Feedback 3</div><div class="tab active">History 2</div></div>
+            <div class="mock-body">
+              <div class="group-label"><span>By comment</span><span>2 threads</span></div>
+              <div class="thread">
+                <div class="item-head"><span class="badge">Open</span><span class="tiny">Owner placement</span></div>
+                <div class="thread-step"><span class="tiny">Comment / Revision 2</span><br>Make the incident owner easier to scan.</div>
+                <div class="thread-step"><span class="tiny">Amended / Revision 3</span><br>Owner moved beside severity.</div>
+                <div class="thread-step"><span class="tiny">Current</span><br>Awaiting acceptance in Feedback.</div>
+              </div>
+              <div class="thread">
+                <div class="item-head"><span class="badge accepted">Accepted</span><span class="tiny">Escalation copy</span></div>
+                <div class="thread-step"><span class="tiny">Comment / Revision 1</span><br>Clarify the escalation wording.</div>
+                <div class="thread-step"><span class="tiny">Amended / Revision 2</span><br>Action now names owner and deadline.</div>
+                <div class="thread-step"><span class="tiny">Decision</span><br>Accepted by reviewer.</div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="comparison-title">
+      <div class="section-head">
+        <div><div class="label">Recommendation</div><h2 id="comparison-title">Choose the revision-cycle ledger.</h2></div>
+        <p>Blueprint’s artifact lifecycle is revision-first. Grouping the record the same way makes every amendment traceable to the feedback batch that caused it and keeps “what changed together?” easy to answer.</p>
+      </div>
+      <table class="matrix">
+        <thead><tr><th>History model</th><th>Best at</th><th>Cost</th><th>Persistence impact</th></tr></thead>
+        <tbody>
+          <tr class="recommended"><td>Revision-cycle ledger</td><td>Reconstructing each review round and its evidence</td><td>A long-lived issue spans multiple groups</td><td>Read existing immutable packets and reports through a lazy reviewer-only history projection</td></tr>
+          <tr><td>Comment-thread ledger</td><td>Following one concern across repeated reopen cycles</td><td>Obscures the sequence and context of each delivered revision</td><td>Same records, but more client-side cross-linking and repeated revision context</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section aria-labelledby="flow-title">
+      <div class="section-head">
+        <div><div class="label">Implementation boundary</div><h2 id="flow-title">One action surface, one read-only record.</h2></div>
+        <p>The recommendation adds no second editing path and does not change the immutable packet/report formats. History is fetched only when opened so normal review state stays compact.</p>
+      </div>
+      <div class="flow" aria-label="Feedback and history lifecycle">
+        <article class="flow-step"><div class="label">01</div><h3>Write in Feedback</h3><p>Draft comments stay private and editable beside current review items.</p></article>
+        <article class="flow-step"><div class="label">02</div><h3>Request revision</h3><p>Revise using feedback sends the current draft batch through the existing packet contract.</p></article>
+        <article class="flow-step"><div class="label">03</div><h3>Review in Feedback</h3><p>Before/after evidence and Accept/Reopen appear in the main work surface.</p></article>
+        <article class="flow-step"><div class="label">04</div><h3>Read in History</h3><p>Past comment and amendment cycles remain inspectable but never become another action queue.</p></article>
+      </div>
+      <div class="meta-band">
+        <strong>Authority boundary</strong>
+        Approving this review authorizes local implementation of the combined Feedback surface, the renamed History tab, the recommended revision-cycle history projection, tests, and durable documentation. It does not authorize external publishing, package release, or unrelated protocol expansion.
+      </div>
+    </section>
+
+    <footer class="footer">Blueprint / inspector information architecture / 2026-08-29</footer>
+  </main>
+</body>
+</html>

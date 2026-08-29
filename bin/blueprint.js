@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
-import { runCli } from "../src/cli.js";
+import { formatCliError, runCli } from "../src/cli.js";
 
 try {
   await runCli();
 } catch (error) {
-  process.stderr.write(`Blueprint: ${error.message}\n`);
-  process.exitCode = 1;
+  process.stdout.write(formatCliError(error));
+  process.exitCode = Number.isInteger(error?.exitCode) ? error.exitCode : 1;
 }

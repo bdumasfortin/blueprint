@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blueprint interactive decision specimen</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #05070a;
+      --panel: #0b1118;
+      --panel-2: #0e151d;
+      --line: #202d38;
+      --line-strong: #33434f;
+      --ink: #edf4f3;
+      --muted: #80909c;
+      --faint: #52616c;
+      --accent: #43e5dd;
+      --success: #74e996;
+      --warn: #ffbd5c;
+      --danger: #ff6971;
+      --brass: #d8a34d;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--canvas); }
+    body {
+      margin: 0;
+      min-width: 320px;
+      color: var(--ink);
+      background-color: var(--canvas);
+      background-image:
+        linear-gradient(rgba(185, 199, 207, .05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(185, 199, 207, .05) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .page { width: min(1440px, 100%); margin: 0 auto; padding: 0 28px 72px; }
+    .masthead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 62px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+    .brand-mark { width: 16px; height: 16px; border: 1px solid var(--accent); position: relative; }
+    .brand-mark::after { content: ""; position: absolute; left: 3px; top: 3px; width: 7px; height: 1px; background: var(--accent); transform: rotate(-45deg); transform-origin: left center; }
+    .hero { padding: 52px 0 36px; border-bottom: 1px solid var(--line); }
+    .eyebrow, .label {
+      color: var(--accent);
+      font: 700 10px/1.25 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    h1 { max-width: 980px; margin: 12px 0 16px; font-size: clamp(38px, 5vw, 70px); line-height: .98; letter-spacing: -.045em; }
+    .lede { max-width: 850px; margin: 0; color: #bdc9cd; font-size: 17px; line-height: 1.65; }
+    .meta-band {
+      margin-top: 28px;
+      padding: 15px 18px 15px 22px;
+      border: 1px solid rgba(216, 163, 77, .65);
+      border-left: 4px solid var(--brass);
+      border-radius: 2px;
+      background-color: rgba(216, 163, 77, .09);
+      background-image: repeating-linear-gradient(135deg, transparent 0, transparent 8px, rgba(216, 163, 77, .045) 8px, rgba(216, 163, 77, .045) 9px);
+      color: #ead2a3;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .meta-band strong { display: block; margin-bottom: 5px; color: var(--brass); font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    .decision { padding: 38px 0; }
+    .section-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 480px); gap: 36px; align-items: end; margin-bottom: 22px; }
+    h2 { margin: 8px 0 0; font-size: clamp(25px, 3vw, 40px); letter-spacing: -.025em; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+    legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .option {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: rgba(8, 13, 18, .95);
+      transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .option.selected { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(67, 229, 221, .12), 0 16px 40px rgba(0, 0, 0, .2); transform: translateY(-2px); }
+    .choice {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 11px;
+      min-height: 137px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+    }
+    .choice input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--accent); }
+    .choice h3 { margin: 7px 0 7px; font-size: 18px; }
+    .choice p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .recommended { color: var(--success); }
+    .specimen { padding: 14px; }
+    .state-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .state-control {
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+    .state-control[aria-pressed="true"] { border-color: var(--accent); background: rgba(67, 229, 221, .08); color: var(--accent); }
+    .live-panel {
+      position: relative;
+      min-height: 260px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      background: var(--panel);
+      transition: background-color .18s ease, border-color .18s ease;
+    }
+    .live-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 42px; padding: 0 11px; border-bottom: 1px solid var(--line); color: var(--muted); font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; }
+    .state-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 4px rgba(82, 97, 108, .12); transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+    .live-body { padding: 13px; }
+    .incident { padding: 12px; border: 1px solid var(--line); background: var(--panel-2); }
+    .incident strong { display: block; margin-bottom: 5px; font-size: 13px; }
+    .incident p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .action-row { display: flex; gap: 7px; margin-top: 11px; }
+    .mock-button { flex: 1; padding: 9px; border: 1px solid var(--line-strong); border-radius: 2px; background: transparent; color: var(--ink); text-align: center; font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .mock-button.primary { border-color: var(--accent); background: var(--accent); color: #03201f; }
+    .feedback-surface { margin-top: 11px; min-height: 68px; padding: 10px; border: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.45; transition: opacity .18s ease, transform .18s ease, border-color .18s ease, background-color .18s ease; }
+    .progress { height: 2px; margin-top: 10px; overflow: hidden; background: var(--line); opacity: 0; }
+    .progress::before { content: ""; display: block; width: 45%; height: 100%; background: var(--accent); transform: translateX(-110%); }
+    .option[data-state="sending"] .progress { opacity: 1; }
+    .option[data-state="sending"] .progress::before { animation: progress 1s ease-in-out infinite; }
+    .option[data-state="sending"] .state-dot { background: var(--warn); box-shadow: 0 0 0 4px rgba(255, 189, 92, .13); transform: scale(1.1); }
+    .option[data-state="success"] .live-panel { border-color: rgba(116, 233, 150, .45); }
+    .option[data-state="success"] .state-dot { background: var(--success); box-shadow: 0 0 0 4px rgba(116, 233, 150, .13); }
+    .option[data-state="success"] .feedback-surface { border-color: rgba(116, 233, 150, .45); background: rgba(116, 233, 150, .055); color: #cfeeda; transform: translateY(-2px); }
+    .option[data-state="failure"] .live-panel { border-color: rgba(255, 105, 113, .5); }
+    .option[data-state="failure"] .state-dot { background: var(--danger); box-shadow: 0 0 0 4px rgba(255, 105, 113, .13); }
+    .option[data-state="failure"] .feedback-surface { border-color: rgba(255, 105, 113, .5); background: rgba(255, 105, 113, .055); color: #ffc0c4; }
+    .option[data-pattern="inline"] .feedback-surface { border-left: 3px solid var(--accent); }
+    .option[data-pattern="drawer"] .feedback-surface { width: 82%; margin-left: auto; box-shadow: -12px 0 30px rgba(0, 0, 0, .26); }
+    .option[data-pattern="toast"] .feedback-surface { width: 88%; margin: 11px auto 0; box-shadow: 0 12px 32px rgba(0, 0, 0, .32); }
+    .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 15px; border: 1px solid var(--line); background: rgba(8, 13, 18, .96); }
+    .form-status { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .queue-button { flex: 0 0 auto; min-width: 150px; padding: 11px 16px; border: 1px solid var(--accent); border-radius: 2px; background: var(--accent); color: #03201f; cursor: pointer; font: 800 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .04em; text-transform: uppercase; }
+    .footer { padding: 27px 0; border-top: 1px solid var(--line); color: var(--faint); font: 700 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    @keyframes progress { 0% { transform: translateX(-110%); } 60%, 100% { transform: translateX(250%); } }
+    @media (max-width: 1050px) {
+      .options { grid-template-columns: 1fr 1fr; }
+      .option:first-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 680px) {
+      .page { padding: 0 16px 52px; }
+      .masthead { min-height: 54px; }
+      .masthead > span:last-child { display: none; }
+      .hero { padding-top: 34px; }
+      .section-head, .options { grid-template-columns: 1fr; }
+      .option:first-child { grid-column: auto; }
+      .form-actions { align-items: stretch; flex-direction: column; }
+      .queue-button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Blueprint</div>
+      <span>Interactive decision specimen</span>
+    </header>
+
+    <section class="hero" aria-labelledby="title">
+      <div class="eyebrow">Fictional product decision</div>
+      <h1 id="title">Choose how an incident action reports progress.</h1>
+      <p class="lede">Each candidate uses the same incident and the same four states. Exercise the controls to judge how the pattern handles latency, success, and recovery—not only how it looks at rest.</p>
+      <div class="meta-band">
+        <strong>Review protocol</strong>
+        Explore the states in every specimen, choose one pattern with its radio control, then select <b>Queue response</b>. The selection becomes one editable private draft in Feedback. It is not sent until you choose <b>Revise using feedback</b> or <b>Approve with feedback</b> in Blueprint.
+      </div>
+    </section>
+
+    <section class="decision" aria-labelledby="decision-title">
+      <div class="section-head">
+        <div><div class="label">Three representative options</div><h2 id="decision-title">Keep state changes close to the action.</h2></div>
+        <p>The inline pattern is recommended because it keeps confirmation and recovery in context. The drawer preserves more history; the toast minimizes layout movement but is easiest to miss.</p>
+      </div>
+
+      <form id="incident-action-pattern" data-blueprint-response="Choose the incident action progress pattern">
+        <fieldset>
+          <legend>Incident action progress pattern</legend>
+          <div class="options">
+            <article class="option selected" data-pattern="inline" data-state="rest">
+              <label class="choice">
+                <input type="radio" name="progress-pattern" value="Inline status — keep feedback beside the incident action" checked required>
+                <span><span class="label recommended">Option A / Recommended</span><h3>Inline status</h3><p>The action row becomes a compact progress and recovery surface without leaving the incident.</p></span>
+              </label>
+              <div class="specimen">
+                <div class="state-controls" aria-label="Inline status states">
+                  <button class="state-control" type="button" data-state="rest" aria-pressed="true">Rest</button>
+                  <button class="state-control" type="button" data-state="sending" aria-pressed="false">Sending</button>
+                  <button class="state-control" type="button" data-state="success" aria-pressed="false">Success</button>
+                  <button class="state-control" type="button" data-state="failure" aria-pressed="false">Failure</button>
+                </div>
+                <div class="live-panel">
+                  <div class="live-head"><span>Incident 1842</span><span class="state-dot" aria-hidden="true"></span></div>
+                  <div class="live-body"><div class="incident"><strong>Checkout error rate</strong><p>Owner: Maya · severity 1 · 31 min</p><div class="action-row"><span class="mock-button primary">Acknowledge</span><span class="mock-button">Escalate</span></div></div><div class="progress"></div><div class="feedback-surface" aria-live="polite">Ready. Confirmation will appear directly below the action.</div></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="option" data-pattern="drawer" data-state="rest">
+              <label class="choice">
+                <input type="radio" name="progress-pattern" value="Activity drawer — preserve progress and recovery in a side ledger" required>
+                <span><span class="label">Option B</span><h3>Activity drawer</h3><p>A side ledger records the attempt and exposes retry details while the incident remains visible.</p></span>
+              </label>
+              <div class="specimen">
+                <div class="state-controls" aria-label="Activity drawer states">
+                  <button class="state-control" type="button" data-state="rest" aria-pressed="true">Rest</button>
+                  <button class="state-control" type="button" data-state="sending" aria-pressed="false">Sending</button>
+                  <button class="state-control" type="button" data-state="success" aria-pressed="false">Success</button>
+                  <button class="state-control" type="button" data-state="failure" aria-pressed="false">Failure</button>
+                </div>
+                <div class="live-panel">
+                  <div class="live-head"><span>Incident 1842</span><span class="state-dot" aria-hidden="true"></span></div>
+                  <div class="live-body"><div class="incident"><strong>Checkout error rate</strong><p>Owner: Maya · severity 1 · 31 min</p><div class="action-row"><span class="mock-button primary">Acknowledge</span><span class="mock-button">Escalate</span></div></div><div class="progress"></div><div class="feedback-surface" aria-live="polite">Activity drawer is closed. It opens when the action begins.</div></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="option" data-pattern="toast" data-state="rest">
+              <label class="choice">
+                <input type="radio" name="progress-pattern" value="Toast queue — keep the incident layout stable and report progress globally" required>
+                <span><span class="label">Option C</span><h3>Toast queue</h3><p>A compact global message reports progress without changing the incident layout.</p></span>
+              </label>
+              <div class="specimen">
+                <div class="state-controls" aria-label="Toast queue states">
+                  <button class="state-control" type="button" data-state="rest" aria-pressed="true">Rest</button>
+                  <button class="state-control" type="button" data-state="sending" aria-pressed="false">Sending</button>
+                  <button class="state-control" type="button" data-state="success" aria-pressed="false">Success</button>
+                  <button class="state-control" type="button" data-state="failure" aria-pressed="false">Failure</button>
+                </div>
+                <div class="live-panel">
+                  <div class="live-head"><span>Incident 1842</span><span class="state-dot" aria-hidden="true"></span></div>
+                  <div class="live-body"><div class="incident"><strong>Checkout error rate</strong><p>Owner: Maya · severity 1 · 31 min</p><div class="action-row"><span class="mock-button primary">Acknowledge</span><span class="mock-button">Escalate</span></div></div><div class="progress"></div><div class="feedback-surface" aria-live="polite">No toast is visible until the action begins.</div></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <span class="form-status" data-blueprint-response-status aria-live="polite">The recommended option is selected locally. Explore the states, then queue the response when ready.</span>
+          <button class="queue-button" type="submit">Queue response</button>
+        </div>
+      </form>
+    </section>
+
+    <footer class="footer">Blueprint / interactive decision contract specimen / 2026-08-29</footer>
+  </main>
+
+  <script>
+    (() => {
+      const messages = {
+        inline: {
+          rest: "Ready. Confirmation will appear directly below the action.",
+          sending: "Acknowledging incident… the action stays visible and unavailable.",
+          success: "Acknowledged by Maya at 14:32. Undo remains available for 10 seconds.",
+          failure: "Acknowledgement failed. Retry here without losing incident context.",
+        },
+        drawer: {
+          rest: "Activity drawer is closed. It opens when the action begins.",
+          sending: "Activity drawer opened: acknowledgement attempt is in progress.",
+          success: "Activity ledger recorded the acknowledgement and actor.",
+          failure: "Activity drawer keeps the failed attempt and exposes Retry details.",
+        },
+        toast: {
+          rest: "No toast is visible until the action begins.",
+          sending: "Global toast: Acknowledging incident 1842…",
+          success: "Global toast: Incident acknowledged successfully.",
+          failure: "Global toast: Acknowledgement failed · Retry",
+        },
+      };
+
+      document.querySelectorAll(".state-control").forEach((button) => {
+        button.addEventListener("click", () => {
+          const option = button.closest(".option");
+          const state = button.dataset.state;
+          option.dataset.state = state;
+          option.querySelectorAll(".state-control").forEach((control) => {
+            control.setAttribute("aria-pressed", String(control === button));
+          });
+          option.querySelector(".feedback-surface").textContent = messages[option.dataset.pattern][state];
+        });
+      });
+
+      const form = document.getElementById("incident-action-pattern");
+      const status = form.querySelector("[data-blueprint-response-status]");
+      form.addEventListener("change", (event) => {
+        if (!(event.target instanceof HTMLInputElement) || event.target.type !== "radio") return;
+        form.querySelectorAll(".option").forEach((option) => option.classList.remove("selected"));
+        event.target.closest(".option").classList.add("selected");
+        status.textContent = "Selection changed locally. Choose Queue response when it reflects your decision.";
+      });
+      form.addEventListener("submit", (event) => event.preventDefault());
+    })();
+  </script>
+</body>
+</html>
