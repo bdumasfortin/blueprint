@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -19,7 +19,7 @@ test("artifact paths are canonical existing HTML files", async (t) => {
   await writeFile(artifact, "<!doctype html><title>Review</title>");
 
   const canonical = await canonicalArtifactPath(artifact);
-  assert.equal(canonical, path.resolve(artifact));
+  assert.equal(canonical, await realpath(artifact));
   assert.match(pathKeyFor(canonical), /^[a-f0-9]{64}$/);
 
   const textFile = path.join(root, "review.txt");
