@@ -13,7 +13,7 @@ The approved target is:
 3. The npm package ships a generated, on-demand `blueprint` skill that points agents back to the current CLI guidance.
 4. An `npx` path may later provide zero-setup evaluation, but persistent local sessions make a global installation the preferred repeated-use model.
 
-The public package is named `blueprint-local-review` and licensed MIT. Version 0.2.0 is the first public-release candidate. Publication requires the enforced coverage and package-boundary checks, isolated tarball installation, browser and recovery evidence, and an exact final review of the artifact to be published.
+The public package is named `blueprint-local-review` and licensed MIT. Version 0.2.0 is the first public release. Publication requires the enforced coverage and package-boundary checks, isolated tarball installation, browser and recovery evidence, and an exact final review of the artifact to be published. The registry copy must match the reviewed tarball's integrity and checksum.
 
 ## AXI interface principles
 
@@ -94,4 +94,4 @@ Those remain separate decisions and authority gates.
 
 ## Public-release evidence gate
 
-The 0.2.0 candidate enforces at least 90% line, 65% branch, and 90% function coverage through Node's built-in test runner. The package contract independently dry-runs `npm pack`, requires the CLI, runtime, generated skill, README, and MIT license, and rejects any unexpected path. The exact tarball must then install into a fresh prefix, complete the isolated Codex and Claude hook lifecycle, run on the declared Node 22 minimum, pass a real-browser wide/narrow and service-restart cycle, and pass `npm publish --dry-run` before publication.
+Version 0.2.0 enforces at least 90% line, 65% branch, and 90% function coverage through Node's built-in test runner. The package contract independently dry-runs `npm pack`, requires the CLI, runtime, generated skill, README, and MIT license, and rejects any unexpected path. The exact tarball installed into a fresh prefix, completed the isolated Codex and Claude hook lifecycle, ran on the declared Node 22 minimum, passed a real-browser wide/narrow and service-restart cycle, and passed `npm publish --dry-run` before publication. Windows/Linux × Node 22/24 CI then passed, the exact tarball was published, and its public registry integrity and checksum were verified before local installation and source tagging.

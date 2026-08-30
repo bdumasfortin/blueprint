@@ -31,7 +31,7 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - The human entry point is conversational: the reviewer asks their agent to start or continue Blueprint and is never expected to invoke the CLI. The CLI is an agent-adapter surface.
 - The default agent launch is `blueprint review <artifact.html>`, which atomically opens the reviewer surface and retains the first feedback wait. Separate `open` and `wait` commands are recovery and diagnostic tools, not the normal launch path.
 - Blueprint is formally an AXI. The approved distribution direction is a global npm CLI with explicit, reversible SessionStart hooks for Codex and Claude Code, plus a generated on-demand skill and later `npx` evaluation path.
-- Installing the npm package alone must not edit agent configuration. Hook setup is a separate explicit action. MIT is the approved license, `blueprint-local-review` is the candidate public identity, and version 0.2.0 is the first release candidate. No public package currently resolves under that name; final registry acceptance is proven only by publication. Public npm publication requires the enforced validation, browser and recovery coverage, isolated package checks, and an authenticated npm session. Changes to a user's real agent installation remain a separate authority gate.
+- Installing the npm package alone must not edit agent configuration. Hook setup is a separate explicit action. `blueprint-local-review` is the MIT-licensed public package identity, and version 0.2.0 is the first public release. Its registry integrity must match the reviewed tarball. Public npm publication requires the enforced validation, browser and recovery coverage, isolated package checks, and an authenticated npm session. Changes to a user's real agent installation remain a separate authority gate.
 - Ground-up product design informed by Lavish and selected MIT code, not a fork that inherits the entire product architecture.
 
 ### Human control
@@ -107,7 +107,7 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - Sandboxed review and local operation are defaults.
 - No telemetry.
 - Artifact publishing and hosted sharing remain outside the core product.
-- MIT is the approved repository license. Public npm publication is an approved distribution goal after the readiness gates above are satisfied; it is not evidence that the current package is already production-ready or published.
+- MIT is the approved repository license. Version 0.2.0 is publicly distributed through npm after satisfying the approved release gates; publication is not evidence of broad feature parity or production maturity.
 
 ## Keep / modify / remove from Lavish
 
@@ -179,6 +179,8 @@ On 2026-08-30 the user explicitly removed approval as a valid action while the a
 
 On 2026-08-30 the user also approved the recommended atomic feedback attachment after observing agents sometimes stop after opening a review. `blueprint review <artifact.html>` is now the default launch-and-first-wait command; `open` and `wait` remain compatible lower-level recovery surfaces. The packet schema and browser authority model are unchanged.
 
-On 2026-08-30 the user approved the specialist-wedge positioning after a direct Blueprint-versus-Lavish comparison. The approved next phase is to adopt MIT, strengthen validation and test depth including recovery coverage, remove the Lavish research submodule, and then publish the package to npm. Publication remains conditional on completing and verifying those readiness steps; the approval does not claim present feature parity, production maturity, or a public release that has not occurred.
+On 2026-08-30 the user approved the specialist-wedge positioning after a direct Blueprint-versus-Lavish comparison. The approved next phase adopted MIT, strengthened validation and test depth including recovery coverage, removed the Lavish research submodule, and published the package to npm. The completed release does not claim present feature parity or production maturity.
 
 Later on 2026-08-30 the user approved the exact 0.2.0 release candidate and ordered sequence: commit and push the matching source to `origin/main`, observe the Windows/Linux Node 22/24 CI matrix, authenticate npm, publish the reviewed `blueprint-local-review@0.2.0` tarball as `latest`, verify the registry, install the published package on this computer, verify the existing Codex integration, then create and push `v0.2.0`. Any CI, authentication, integrity, publication, installation, or verification failure stops the sequence without silent repacking.
+
+That sequence completed with the unchanged reviewed tarball. The four-cell CI matrix passed, npm reports the approved integrity and SHA-1 with `latest` at 0.2.0, a clean public install passed, this computer now runs the public 0.2.0 package, and the existing Codex integration remained installed and byte-identical without repair. Tag `v0.2.0` records the matching release source.
