@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { getStateRoot } from "./paths.js";
 
-export const AXI_CONTRACT_VERSION = 1;
+export const AXI_CONTRACT_VERSION = 2;
 export const CLI_DESCRIPTION = "Local, human-gated HTML review for one person and one agent.";
 export const DEFAULT_SESSION_LIMIT = 5;
 export const HOOK_SESSION_LIMIT = 3;
@@ -138,7 +138,7 @@ export function renderHome(model, options = {}) {
   const help = [];
   const queued = model.reviews.find((review) => review.queued_feedback > 0);
   if (queued) help.push(`Run \`blueprint wait ${JSON.stringify(queued.artifact)}\` to receive the oldest queued feedback.`);
-  if (model.total === 0) help.push("Run `blueprint open <artifact.html>` after the reviewer asks to begin a review.");
+  if (model.total === 0) help.push("Run `blueprint review <artifact.html>` after the reviewer asks to begin a review; it opens and waits atomically.");
   help.push("Run `blueprint playbook` to choose the current authoring or review-loop guidance.");
   if (model.truncated > 0) {
     help.push(model.full
@@ -187,7 +187,7 @@ export async function renderHookContext(agent, options = {}) {
   }
   if (stateError) lines.push(`live_state_error: ${stateError}; run \`blueprint\` for structured recovery guidance`);
   if (model.truncated > 0) lines.push(`- ${model.truncated} more active reviews; run \`blueprint --full\``);
-  lines.push("When a review is requested, run `blueprint playbook`, then keep exactly one `blueprint wait <artifact.html>` attached after opening.");
+  lines.push("When a review is requested, run `blueprint playbook`, then use `blueprint review <artifact.html>` so opening and the first feedback wait stay one attached action. Use `blueprint wait` only to recover or reattach.");
   const additionalContext = lines.join("\n");
   return JSON.stringify({
     hookSpecificOutput: {

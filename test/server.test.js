@@ -98,6 +98,10 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   assert.match(shell, /id="approve-review"[^>]*>Approve<\/button>/);
   assert.match(shell, /id="revise-review"[^>]*hidden>Revise using feedback<\/button>/);
   assert.match(shell, /approveButton\.textContent = hasContent \? "Approve with feedback" : "Approve"/);
+  assert.match(shell, /const approvalBlocked = pendingRevisionRequest\(\)\.packets\.length > 0 \|\| !!state\.stagedRevision/);
+  assert.match(shell, /approveButton\.disabled = !active \|\| !draftsValid \|\| approvalBlocked/);
+  assert.match(shell, /Approval is unavailable until the requested revision is revealed/);
+  assert.match(shell, /revision\.sequence <= visibleSequence/);
   assert.match(shell, /JSON\.stringify\(\{ intent \}\)/);
   assert.match(shell, /Revision is ready/);
   assert.match(shell, /id="see-latest-revision"[^>]*>See latest revision<\/button>/);

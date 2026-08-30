@@ -498,9 +498,15 @@ export function renderReviewShell(reviewToken, nonce) {
       const draftsValid = state.drafts.every((draft) => draft.body.trim());
       const hasContent = state.drafts.length > 0 || noteField.value.trim();
       const active = !sending && state.status === "active" && !!state.visibleRevision;
+      const approvalBlocked = pendingRevisionRequest().packets.length > 0 || !!state.stagedRevision;
       sendArea.classList.toggle("has-feedback", !!hasContent);
       approveButton.textContent = hasContent ? "Approve with feedback" : "Approve";
-      approveButton.disabled = !active || !draftsValid;
+      approveButton.disabled = !active || !draftsValid || approvalBlocked;
+      approveButton.title = approvalBlocked
+        ? "Approval is unavailable until the requested revision is revealed."
+        : "";
+      if (approvalBlocked) approveButton.setAttribute("aria-describedby", "revision-progress-detail");
+      else approveButton.removeAttribute("aria-describedby");
       reviseButton.hidden = !hasContent;
       reviseButton.disabled = !active || !draftsValid;
     }
@@ -626,7 +632,12 @@ export function renderReviewShell(reviewToken, nonce) {
     }
 
     function pendingRevisionRequest() {
-      const basisPacketIds = new Set(state.revisions.flatMap((revision) => revision.basisPacketIds ?? []));
+      const visibleSequence = state.visibleRevision?.sequence ?? 0;
+      const basisPacketIds = new Set(
+        state.revisions
+          .filter((revision) => revision.sequence <= visibleSequence)
+          .flatMap((revision) => revision.basisPacketIds ?? []),
+      );
       const packets = state.packets.filter((packet) => packet.intent === "revise" && !basisPacketIds.has(packet.id));
       const packetIds = new Set(packets.map((packet) => packet.id));
       const commentCount = state.feedback.filter((feedback) => feedback.history.some((entry) => packetIds.has(entry.packetId))).length;
@@ -652,13 +663,13 @@ export function renderReviewShell(reviewToken, nonce) {
       progress.classList.toggle("working", working);
       if (!working) {
         title.textContent = "Revision requested · Waiting for agent";
-        detail.textContent = comments + " sent " + submitted + ". They remain listed below while you continue reviewing.";
+        detail.textContent = comments + " sent " + submitted + ". They remain listed below while you continue reviewing. Approval returns after you reveal the revision.";
         return;
       }
       title.textContent = "Agent working on revision";
       detail.textContent = request.queued.length
         ? "The agent received earlier feedback; " + request.queued.length + " newer " + (request.queued.length === 1 ? "batch is" : "batches are") + " waiting. All sent comments remain below."
-        : "The agent received " + comments + ". You can keep reviewing; Blueprint will interrupt when the revision is ready.";
+        : "The agent received " + comments + ". You can keep reviewing; Blueprint will interrupt when the revision is ready. Approval returns after you reveal it.";
     }
 
     function renderReviewItems() {

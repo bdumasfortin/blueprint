@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { execFile as execFileCallback } from "node:child_process";
+import { execFile as execFileCallback, spawn } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +14,37 @@ import { startBlueprintServer } from "../src/server.js";
 const execFile = promisify(execFileCallback);
 const repositoryRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const executable = path.join(repositoryRoot, "bin", "blueprint.js");
+
+function runAttached(args, options = {}) {
+  const child = spawn(process.execPath, [executable, ...args], {
+    cwd: options.cwd ?? repositoryRoot,
+    env: { ...process.env, ...options.env },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => { stdout += chunk; });
+  child.stderr.on("data", (chunk) => { stderr += chunk; });
+  const completed = new Promise((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", (code) => {
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(`Attached CLI exited ${code}: ${stderr || stdout}`));
+    });
+  });
+  return { child, completed, stdout: () => stdout, stderr: () => stderr };
+}
+
+async function waitUntil(predicate, message, timeoutMs = 5_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await delay(10);
+  }
+  throw new Error(message);
+}
 
 test("the feedback wait survives a quiet request timeout", async () => {
   const packet = { id: "packet-after-timeout" };
@@ -32,6 +64,58 @@ test("the feedback wait survives a quiet request timeout", async () => {
   });
   assert.equal(attempts, 2);
   assert.equal(delivered, packet);
+});
+
+test("review atomically opens and stays attached until one packet is delivered", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "blueprint-review-cli-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const stateDir = path.join(root, "state");
+  const artifact = path.join(root, "artifact.html");
+  await writeFile(artifact, "<!doctype html><h1>Atomic review</h1>");
+
+  const running = await startBlueprintServer({ stateDir, port: 0 });
+  t.after(() => running.close());
+  const environment = { BLUEPRINT_STATE_DIR: stateDir };
+  const attached = runAttached(["review", artifact, "--no-open"], { env: environment });
+  t.after(() => {
+    if (attached.child.exitCode === null) attached.child.kill();
+  });
+
+  await waitUntil(
+    () => /review_url: "http:\/\/127\.0\.0\.1:\d+\/review\//.test(attached.stderr()),
+    "Atomic review did not report its reviewer URL.",
+  );
+  assert.equal(attached.child.exitCode, null);
+  assert.equal(attached.stdout(), "");
+  assert.match(attached.stderr(), /status: "waiting for one intent-bearing feedback packet"/);
+
+  const reviewUrl = JSON.parse(attached.stderr().match(/review_url: ("[^"]+")/)[1]);
+  const reviewToken = decodeURIComponent(new URL(reviewUrl).pathname.split("/").at(-1));
+  const browserBase = `${running.origin}/api/session/${encodeURIComponent(reviewToken)}`;
+  const state = await api(`${browserBase}/state`);
+  await api(`${browserBase}/drafts`, {
+    method: "PUT",
+    body: JSON.stringify({
+      packetNote: "",
+      drafts: [{
+        id: "feedback-atomic-1",
+        kind: "initial",
+        body: "Keep the launch attached.",
+        createdAt: new Date().toISOString(),
+        sourceRevisionId: state.visibleRevision.id,
+        anchor: { type: "general", quote: "General feedback", prefix: "", suffix: "", selector: "" },
+      }],
+    }),
+  });
+  const packet = await api(`${browserBase}/send`, {
+    method: "POST",
+    body: JSON.stringify({ intent: "revise" }),
+  });
+
+  const completed = await attached.completed;
+  assert.equal(JSON.parse(completed.stdout).id, packet.id);
+  assert.doesNotMatch(completed.stdout, /review_url|http:\/\/127\.0\.0\.1/);
+  assert.equal((await api(`${browserBase}/state`)).packets[0].status, "delivered");
 });
 
 async function api(url, options = {}) {

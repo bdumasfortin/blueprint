@@ -1,6 +1,6 @@
 # Blueprint minimum credible core
 
-Status: minimum core approved on 2026-08-28; first local AXI integration slice and approval/revision lifecycle approved on 2026-08-29.
+Status: minimum core approved on 2026-08-28; first local AXI integration slice and approval/revision lifecycle approved on 2026-08-29; pending-revision approval gating and atomic launch-and-wait approved on 2026-08-30.
 
 This contract defines the first usable Blueprint vertical slice. It is intentionally smaller than the full product direction in `docs/PRODUCT.md`. Its purpose is to expose the core review loop to real use before more machinery is added.
 
@@ -19,10 +19,10 @@ The reviewed HTML file remains the editable, portable source of truth. Each open
 
 ## First vertical slice
 
-1. The agent runs `blueprint open <artifact.html>` after the reviewer asks it to launch Blueprint. It validates and snapshots a self-contained HTML file, makes the initial snapshot visible immediately, starts or reuses the loopback service, and opens the trusted review shell unless `--no-open` is supplied. The reviewer is not expected to run this command.
+1. The agent runs `blueprint review <artifact.html>` after the reviewer asks it to launch Blueprint. One attached process validates and snapshots a self-contained HTML file, makes the initial snapshot visible immediately, starts or reuses the loopback service, opens the trusted review shell unless `--no-open` is supplied, and waits for exactly one intent-bearing response. The reviewer URL and waiting status use standard error so standard output remains exact packet JSON. The reviewer is not expected to run this command. Separate `open` and `wait` commands remain recovery and diagnostic surfaces.
 2. The reviewer holds Alt/Option to preview the exact HTML element under the pointer, clicks to annotate it, and edits chronological private drafts. Creating an anchored draft focuses its editor immediately; submitting **Additional feedback** queues a normal unanchored general comment rather than sending anything. A declarative decision form may instead use native controls and **Queue response** to create or replace one form-scoped private draft without sending it.
-3. With no feedback, the reviewer can only choose **Approve**. With feedback, that action becomes **Approve with feedback** and **Revise using feedback** appears. Approval queues a final packet and atomically ends the session. After the server confirms that transition, the shell becomes terminal: it stops polling and annotation intake, blanks the sandbox, removes the review application from view, and exposes only an opaque completion screen. Reloaded or polling shells apply the same terminal state when they observe `status: ended`. **Revise using feedback** queues a revision-request packet, clears only that sent batch, briefly confirms it in a centered overlay, and leaves the current artifact and session active. Feedback derives a persistent waiting/working state from queued/delivered packet acknowledgement and retains the submitted comment records below it.
-4. The agent retains exactly one attached `blueprint wait <artifact.html>`. It receives and acknowledges the oldest intent-bearing packet. After each completed revise delivery, the agent replaces the completed wait while editing so later batches can be included; concurrent waits for one review are invalid.
+3. With no feedback, the reviewer can only choose **Approve**. With feedback, that action becomes **Approve with feedback** and **Revise using feedback** appears. Approval queues a final packet and atomically ends the session. After the server confirms that transition, the shell becomes terminal: it stops polling and annotation intake, blanks the sandbox, removes the review application from view, and exposes only an opaque completion screen. Reloaded or polling shells apply the same terminal state when they observe `status: ended`. **Revise using feedback** queues a revision-request packet, clears only that sent batch, briefly confirms it in a centered overlay, and leaves the current artifact and session active. Feedback derives a persistent waiting/working state from queued/delivered packet acknowledgement and retains the submitted comment records below it. Approval is disabled from revision submission until the reviewer reveals a revision that names the request as a basis; the reviewer endpoint enforces the same gate.
+4. The initial `blueprint review` process receives and acknowledges the oldest intent-bearing packet, then exits. After each completed revise delivery, the agent attaches exactly one `blueprint wait <artifact.html>` while editing so later batches can be included; concurrent waits for one review are invalid.
 5. The agent edits the authoritative HTML file and runs `blueprint stage <artifact.html> --report <report.json>`. A schema-version-2 report names all basis packet IDs and supplies comment-linked change evidence.
 6. Staging creates an immutable snapshot and opens a blocking **Revision is ready** curtain. Visible artifact content is unchanged until the reviewer chooses **See latest revision**. Unsent drafts and their source-revision identities survive this transition.
 7. The revealed artifact marks reported amended elements. The main **Feedback** tab combines private drafts with all submitted non-accepted comments. Activating an element-anchored draft label or submitted card sends a selector-only focus message across the sandbox boundary; the injected runtime resolves it, centers the visible element, and briefly outlines it. A visible-revision amendment selector takes precedence over the original feedback anchor. Unreported comments remain as read-only sent receipts; reported items add before/after evidence and Accept/Reopen actions. Accepting an item immediately removes both its marker and Feedback card. The read-only **History** tab retains comments and amendments grouped by revealed revision cycle. Reopening requires a note and creates a private follow-up draft under the same identity.
@@ -36,6 +36,7 @@ The CLI remains the shared first-class adapter for Codex and Claude Code. Its AX
 - `--full` is the explicit larger-output escape hatch;
 - home, playbook, setup, and error output use a compact TOON-like line contract;
 - feedback packets and staged-revision results remain exact JSON protocol payloads;
+- atomic `review` launch diagnostics use standard error so its eventual standard output remains one exact feedback packet;
 - unknown commands, flags, playbooks, agents, and command shapes fail with structured standard output and exit code `2`;
 - operational errors fail with structured standard output and exit code `1`;
 - `blueprint playbook` owns current content and review-loop guidance;
@@ -60,6 +61,7 @@ The complete distribution and packaging boundary is recorded in `docs/AXI.md`.
 - Submission writes the immutable packet file before publishing its queued state in the session manifest.
 - Packet schema version 2 includes an explicit `intent` of `approve` or `revise`, a submission revision, and a source revision on every comment.
 - `approve` may contain zero comments and atomically ends the review. `revise` requires at least one non-empty comment and keeps the review active.
+- An `approve` submission is rejected with conflict status while any revise packet is not represented by a visible revision or while a staged revision remains unrevealed. Rejection preserves all drafts and session state.
 - The agent receives the oldest queued packet.
 - A packet stays queued until the CLI has completely written it to standard output and successfully acknowledges its ID.
 - A process or connection failure before acknowledgement causes the same packet ID to be delivered again. Consumers must treat packet IDs as duplicate-safe, at-least-once delivery keys.
@@ -79,6 +81,7 @@ The complete distribution and packaging boundary is recorded in `docs/AXI.md`.
 ### Human authority
 
 - Drafts stay private and editable until **Approve with feedback** or **Revise using feedback**.
+- Final approval is unavailable while a revision request is queued, delivered, or covered only by an unrevealed staged revision. Additional revise batches remain available during this period.
 - Artifact decision forms are opt-in through a unique safe form `id` and `data-blueprint-response`. The injected review layer intercepts a trusted submit-button activation (or submit event where permitted), serializes meaningful named values, and asks the shell to create or replace one revision-scoped draft. Input changes alone do nothing, and a queued response has no authority until the reviewer uses a shell submission action.
 - Every draft records its source revision. Reveal never deletes a draft or rewrites that source. Every remaining draft is part of the selected submission; deleting it is the only exclusion action.
 - Plain Enter in a comment editor queues and durably saves that private comment without sending it. Enter in **Additional feedback** queues one stable general comment without sending; Shift+Enter inserts a newline.
@@ -139,15 +142,16 @@ The implementation must exercise:
 - canonical path and route-boundary rejection;
 - atomic state survival across a store restart;
 - same-ID packet redelivery before acknowledgement and no delivery after acknowledgement;
-- approve-without-comments finality, approve-with-feedback finality, and revise-with-feedback continuity;
+- atomic review launch, quiet-timeout persistence, exact packet-only standard output, and lower-level open/wait compatibility;
+- approve-without-comments finality, approve-with-feedback finality, revise-with-feedback continuity, and approval rejection across queued, delivered, and staged revision work until reveal;
 - revision-scoped draft preservation across reveal;
 - staged-versus-visible revision separation;
 - multi-packet report validation against known stable feedback IDs and rich change evidence;
-- required reopen notes and stable IDs; and
-- reviewer-token versus agent-token authority separation.
+- required reopen notes and stable IDs;
+- reviewer-token versus agent-token authority separation;
 - bounded content-first AXI home output and definitive empty states;
 - structured failures and unknown-option exit code `2`;
 - generated-skill drift detection; and
 - idempotent hook install, status, repair, and removal without overwriting unrelated or malformed agent configuration.
 
-Browser QA must additionally inspect the docked layout, modifier-held target preview, Alt/Option-click element annotation and editor focus, combined private-draft and review-item Feedback flow, context-sensitive approval/revision actions, blocking ready curtain, preserved drafts, sandbox response policy, feedback-linked change map, accepted-item removal, read-only revision-cycle History, and accept/reopen flow at wide and narrow widths.
+Browser QA must additionally inspect the docked layout, modifier-held target preview, Alt/Option-click element annotation and editor focus, combined private-draft and review-item Feedback flow, context-sensitive approval/revision actions including pending-revision approval disablement, blocking ready curtain, preserved drafts, sandbox response policy, feedback-linked change map, accepted-item removal, read-only revision-cycle History, and accept/reopen flow at wide and narrow widths.

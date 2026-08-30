@@ -10,7 +10,7 @@ The working name is settled as **Blueprint**. A naming exploration was explicitl
 
 ## Product in one paragraph
 
-At the reviewer's request, an agent prepares and launches a portable HTML artifact directly into Blueprint. Decision artifacts use native selectable controls and a deliberate **Queue response** action; queueing creates one editable private Feedback draft and never sends by itself. Decision-relevant UI specimens expose representative states and transitions instead of behaving like static screenshots. Holding Alt/Option still previews the exact element under the pointer for free-form annotation, and Enter queues that comment locally. With no comments, **Approve** is the only submission. With comments, the reviewer can choose final **Approve with feedback** or **Revise using feedback**. Approval atomically ends the session and retires the review surface behind an opaque completion screen; revision requests keep the session open, receive a centered temporary confirmation, and persistently distinguish waiting-for-agent from agent-working state while retaining sent comments. A prepared revision presents a blocking ready curtain; **See latest revision** reveals it without losing unsent drafts. Feedback combines drafts with non-accepted review items, while read-only History retains comments and amendments by revealed revision cycle. The human—not the agent—closes the loop.
+At the reviewer's request, an agent prepares and launches a portable HTML artifact directly into Blueprint. Decision artifacts use native selectable controls and a deliberate **Queue response** action; queueing creates one editable private Feedback draft and never sends by itself. Decision-relevant UI specimens expose representative states and transitions instead of behaving like static screenshots. Holding Alt/Option still previews the exact element under the pointer for free-form annotation, and Enter queues that comment locally. With no comments, **Approve** is the only submission. With comments, the reviewer can choose final **Approve with feedback** or **Revise using feedback**. Approval atomically ends the session and retires the review surface behind an opaque completion screen; revision requests keep the session open, receive a centered temporary confirmation, and persistently distinguish waiting-for-agent from agent-working state while retaining sent comments. Final approval stays unavailable until the requested revision is prepared and the reviewer reveals it. A prepared revision presents a blocking ready curtain; **See latest revision** reveals it without losing unsent drafts. Feedback combines drafts with non-accepted review items, while read-only History retains comments and amendments by revealed revision cycle. The human—not the agent—closes the loop.
 
 ## Ask an agent to run the first slice
 
@@ -23,19 +23,22 @@ node bin/blueprint.js design
 
 Blueprint's implemented default is the unified graphite diagnostic system recorded in [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md): a fine 24-pixel non-blue grid, slate structure, cyan interaction signal, restrained semantic colors, and shared visual language across review chrome and default artifacts. Reviewer-facing instructions inside an artifact use a dedicated brass meta band so they remain visibly separate from the artifact's subject. Explicit Blueprint-specific user or repository instructions may override the default; Blueprint does not automatically inherit a design system merely because one exists in the current workspace. The earlier dark Fieldnote prototype remains a behavioral specimen, not the approved default. [`examples/blueprint-evaluation/02-triage-console.html`](examples/blueprint-evaluation/02-triage-console.html) is the first complete approved-system example; [`examples/blueprint-evaluation/04-interactive-decision.html`](examples/blueprint-evaluation/04-interactive-decision.html) demonstrates selectable decisions, queued responses, and live UI specimen states.
 
-The agent-facing open command is:
+The default agent-facing launch command is:
+
+```sh
+node bin/blueprint.js review path/to/artifact.html
+```
+
+`review` opens the initial artifact immediately and keeps the same process attached until one intent-bearing response arrives. The review URL and waiting state go to standard error, while standard output remains reserved for the exact feedback JSON. This removes the unreliable gap where an agent could open the page but forget to start polling.
+
+The lower-level recovery commands remain available:
 
 ```sh
 node bin/blueprint.js open path/to/artifact.html
-```
-
-The initial artifact appears immediately. The reviewer annotates it and chooses final approval or requests a revision. The agent—not the reviewer—receives the oldest queued intent-bearing feedback submission with:
-
-```sh
 node bin/blueprint.js wait path/to/artifact.html
 ```
 
-`wait` prints one immutable JSON feedback payload, including `intent: "approve" | "revise"`, then acknowledges it only after standard output has completed. After one or more revise batches and edits to the authoritative HTML, the agent can stage a revision:
+`open` launches without waiting; `wait` reattaches to an existing review. Both `review` and `wait` print one immutable JSON feedback payload, including `intent: "approve" | "revise"`, then acknowledge it only after standard output has completed. After one or more revise batches and edits to the authoritative HTML, the agent can stage a revision:
 
 ```sh
 node bin/blueprint.js stage path/to/artifact.html --report path/to/report.json

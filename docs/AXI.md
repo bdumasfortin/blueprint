@@ -1,6 +1,6 @@
 # Blueprint AXI contract
 
-Status: direction and first local implementation slice approved on 2026-08-29. Public publication, package naming, licensing, and modifications to a user's real agent configuration remain separate authority gates.
+Status: direction and first local implementation slice approved on 2026-08-29; atomic review launch-and-wait contract and this computer's Codex integration update approved on 2026-08-30. Public publication, package naming, licensing, and modifications to other agent installations remain separate authority gates.
 
 Blueprint is formally an **Agent eXperience Interface (AXI)**: its command-line output is a product interface for capable agents, while the browser remains the human review surface. The AXI layer does not weaken Blueprint's product invariants. One human, one agent, one authoritative HTML artifact, revision-scoped private drafts, intent-bearing acknowledged feedback, reviewer-controlled revision reveal, a unified Feedback action surface, and read-only revision-cycle History remain the governing contract.
 
@@ -37,7 +37,8 @@ Blueprint applies the ten principles described at [axi.md](https://axi.md/) with
 - `blueprint` owns live AXI state and next-step discovery.
 - `blueprint playbook` owns versioned content and review-loop guidance.
 - `blueprint design` owns the current Blueprint artifact visual authority.
-- `blueprint open`, `wait`, and `stage` own the durable review protocol.
+- `blueprint review` is the default launch: it opens the artifact and keeps the same process attached until one intent-bearing feedback packet is printed and acknowledged.
+- `blueprint open` and `wait` preserve the same durable protocol as separate lower-level recovery and diagnostic commands; `stage` owns revision preparation.
 - `blueprint setup hooks|status|remove` owns optional agent integration.
 - `skills/blueprint/SKILL.md` is generated discovery metadata, not a second copy of the CLI manual.
 
@@ -46,6 +47,8 @@ The versioned playbooks are:
 - `artifact` for deciding whether HTML earns its format and authoring a portable, operable review artifact;
 - `decision` for recommendations, comparisons, native decision controls, live representative specimens, explicit queueing, and authority; and
 - `review-loop` for one tracked wait, immutable approve/revise packet delivery, multi-batch revision reports, staged revision handling, and reviewer-only completion.
+
+AXI contract version 2 removes the procedural seam between initial launch and the first feedback wait. `blueprint review <artifact.html>` writes the reviewer URL and waiting status to standard error, keeps standard output clean for the exact packet JSON, survives quiet long-poll timeouts, and exits only after delivering one packet. This is additive: existing `open` and `wait` scripts remain valid.
 
 ## Intent-bearing review contract
 

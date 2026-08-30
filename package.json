@@ -1,6 +1,6 @@
 {
   "name": "blueprint-local-review",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A human-gated, local-first review loop for one person, one agent, and one HTML artifact.",
   "type": "module",

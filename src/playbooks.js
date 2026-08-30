@@ -1,6 +1,6 @@
 import { CliError, renderFields, renderList, renderTable } from "./axi.js";
 
-export const PLAYBOOK_VERSION = 5;
+export const PLAYBOOK_VERSION = 7;
 
 export const PLAYBOOKS = Object.freeze([
   {
@@ -35,8 +35,8 @@ export const PLAYBOOKS = Object.freeze([
       "A selection remains browser-local until Queue response places one editable private draft in Feedback; re-queueing the same form replaces that unsent draft instead of adding another. Only an intent-bearing Approve with feedback or Revise using feedback submission authorizes the corresponding next action.",
     ],
     next: [
-      "Run `blueprint open <artifact.html>` only after the reviewer asks to launch the review.",
-      "Retain exactly one `blueprint wait <artifact.html>` until feedback is delivered.",
+      "Run `blueprint review <artifact.html>` only after the reviewer asks to launch the review; it opens and waits as one attached action.",
+      "Use separate `blueprint open` and `blueprint wait` commands only for recovery or diagnostics.",
     ],
   },
   {
@@ -44,12 +44,14 @@ export const PLAYBOOKS = Object.freeze([
     useWhen: "Open a Blueprint review, receive feedback, and stage a revision",
     guidance: [
       "Treat the HTML file as authoritative and the served revision as immutable evidence.",
-      "Run `blueprint open <artifact.html>`, then start exactly one attached `blueprint wait <artifact.html>`.",
+      "Run `blueprint review <artifact.html>` as the default launch. It opens the artifact and keeps the same command attached until exactly one feedback packet is delivered. Do not end the turn while that command is still waiting.",
+      "Use separate `blueprint open <artifact.html>` and `blueprint wait <artifact.html>` only to recover or diagnose an existing review; never run concurrent waits.",
       "Do not act on unsent browser drafts. Wait returns one immutable intent-bearing JSON packet and acknowledges only after complete delivery.",
       "Handle packet IDs idempotently because delivery is at least once.",
       "An `approve` packet is final: the browser review surface retires after persistence; honor any attached comments and do not stage another revision or expect further browser feedback for that ended review.",
       "A `revise` packet keeps the review active. Continue one attached wait while editing so later revise batches can join the same revision; replace a completed wait, but never run concurrent waits for one review.",
       "The reviewer shell keeps sent comments visible and derives waiting-for-agent versus agent-working state from packet acknowledgement. Acknowledge promptly after complete delivery, and do not interpret a still-queued batch as agent work already underway.",
+      "Final approval is unavailable after a revise packet is submitted and remains unavailable until a revision covering that request is staged and the reviewer reveals it. Additional revise batches may still arrive while you work.",
       "Before staging, account for every revise packet used as a basis and report every comment in those packets. Use report schema version 2 with `basisPacketIds`; each addressed or changed comment needs `before`, `after`, `summary`, `evidence`, and the amended element's `selector`.",
       "Edit the authoritative HTML, then run `blueprint stage <artifact.html> --report <report.json>`. Staging opens a blocking ready curtain but never reveals the new snapshot.",
       "Only the reviewer may choose See latest revision, accept, reopen, approve, or end the session.",

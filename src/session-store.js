@@ -103,6 +103,21 @@ function packetForDelivery(packet) {
   return packet;
 }
 
+function hasUnrevealedRevisionWork(manifest) {
+  const visibleRevision = manifest.revisions.find(
+    (revision) => revision.id === manifest.visibleRevisionId,
+  );
+  const visibleBasisPacketIds = new Set(
+    manifest.revisions
+      .filter((revision) => visibleRevision && revision.sequence <= visibleRevision.sequence)
+      .flatMap((revision) => revision.basisPacketIds ?? []),
+  );
+  return Boolean(manifest.stagedRevisionId)
+    || manifest.packets.some(
+      (packet) => packet.intent === "revise" && !visibleBasisPacketIds.has(packet.id),
+    );
+}
+
 export class SessionStore {
   constructor(stateRoot, options = {}) {
     this.root = path.resolve(stateRoot);
@@ -395,6 +410,13 @@ export class SessionStore {
       if (manifest.status !== "active") throw new BlueprintError("This review session has ended.", 409);
       if (!manifest.visibleRevisionId) {
         throw new BlueprintError("Reveal the artifact before sending feedback.", 409);
+      }
+      if (intent === "approve" && hasUnrevealedRevisionWork(manifest)) {
+        throw new BlueprintError(
+          "Approval is unavailable until the requested revision is revealed.",
+          409,
+          "revision_pending",
+        );
       }
       const createdAt = this.now();
       const submittedDrafts = [...manifest.drafts];

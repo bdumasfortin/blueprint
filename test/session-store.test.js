@@ -140,6 +140,51 @@ test("approve with feedback accepts the history and ends the review", async (t) 
   assert.ok(state.feedback[0].acceptedAt);
 });
 
+test("approval is rejected until a requested revision is revealed", async (t) => {
+  const { root, artifact } = await createHarness(t);
+  const store = new SessionStore(root);
+  const opened = await store.openArtifact(artifact);
+  await store.replaceDrafts(opened.reviewToken, { drafts: [initialDraft()], packetNote: "" });
+  const revisePacket = await store.sendPacket(opened.reviewToken, { intent: "revise" });
+
+  async function assertApprovalBlocked() {
+    await assert.rejects(
+      () => store.sendPacket(opened.reviewToken, { intent: "approve" }),
+      (error) => {
+        assert.equal(error.status, 409);
+        assert.equal(error.code, "revision_pending");
+        assert.match(error.message, /requested revision is revealed/i);
+        return true;
+      },
+    );
+  }
+
+  await assertApprovalBlocked();
+  await store.acknowledgePacket(revisePacket.sessionId, revisePacket.id);
+  await assertApprovalBlocked();
+
+  await writeFile(artifact, "<!doctype html><h1>A specific revision</h1>");
+  await store.stageArtifact(artifact, {
+    schemaVersion: 2,
+    basisPacketIds: [revisePacket.id],
+    comments: [{
+      commentId: "feedback-1",
+      status: "addressed",
+      before: "First revision",
+      after: "A specific revision",
+      summary: "Made the heading specific.",
+      evidence: "The revised heading names the revision.",
+      selector: "h1",
+    }],
+  });
+  await assertApprovalBlocked();
+
+  await store.revealStaged(opened.reviewToken);
+  const approval = await store.sendPacket(opened.reviewToken, { intent: "approve" });
+  assert.equal(approval.intent, "approve");
+  assert.equal((await store.getBrowserState(opened.reviewToken)).status, "ended");
+});
+
 test("version-one local sessions migrate drafts and queued packets without losing intent", async (t) => {
   const { root, artifact } = await createHarness(t);
   const store = new SessionStore(root);

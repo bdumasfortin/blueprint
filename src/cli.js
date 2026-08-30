@@ -24,10 +24,16 @@ const executablePath = fileURLToPath(new URL("../bin/blueprint.js", import.meta.
 
 function helpText(command = null) {
   const commandHelp = {
+    review: `Usage: blueprint review <artifact.html> [--no-open] [--state-dir <directory>]
+
+Open a self-contained HTML artifact and stay attached until one feedback packet arrives.
+The review URL and waiting state go to standard error; standard output remains exact packet JSON.
+This is the default agent workflow after the reviewer asks to launch Blueprint.
+`,
     open: `Usage: blueprint open <artifact.html> [--no-open] [--state-dir <directory>]
 
-Validate and snapshot a self-contained HTML artifact, then open the local reviewer surface.
-The reviewer must have asked to launch the review.
+Open the local reviewer surface without attaching a feedback wait.
+Prefer \`blueprint review\` for normal launches; use \`open\` for recovery or diagnostics.
 `,
     wait: `Usage: blueprint wait <artifact.html> [--state-dir <directory>]
 
@@ -55,7 +61,7 @@ Restart the selected agent after a change. Codex requires reviewing and trusting
 `,
     server: `Usage: blueprint server [--state-dir <directory>]
 
-Run the loopback service in the foreground for diagnostics. Normal open, wait, and stage commands start or reuse it automatically.
+Run the loopback service in the foreground for diagnostics. Normal review, open, wait, and stage commands start or reuse it automatically.
 `,
   };
   if (command && commandHelp[command]) return commandHelp[command];
@@ -65,6 +71,7 @@ Usage:
   blueprint [--full]
   blueprint design
   blueprint playbook [playbook_id]
+  blueprint review <artifact.html> [--no-open]
   blueprint open <artifact.html> [--no-open]
   blueprint wait <artifact.html>
   blueprint stage <artifact.html> [--report <report.json>]
@@ -276,7 +283,7 @@ export async function runCli(argv = process.argv.slice(2)) {
     return;
   }
   if (args.includes("--help") || args.includes("-h")) {
-    if (["open", "wait", "stage", "playbook", "design", "setup", "server"].includes(command)) {
+    if (["review", "open", "wait", "stage", "playbook", "design", "setup", "server"].includes(command)) {
       process.stdout.write(helpText(command));
       return;
     }
@@ -332,7 +339,7 @@ export async function runCli(argv = process.argv.slice(2)) {
     process.stdout.write(`${await renderHookContext(agent, { cwd })}\n`);
     return;
   }
-  if (!["open", "wait", "stage"].includes(command)) {
+  if (!["review", "open", "wait", "stage"].includes(command)) {
     throw new CliError("UNKNOWN_COMMAND", `Unknown command: ${command}`, {
       exitCode: 2,
       help: ["Run `blueprint --help` to list commands."],
@@ -340,18 +347,26 @@ export async function runCli(argv = process.argv.slice(2)) {
   }
   const parsed = parseArguments(args, {
     valueFlags: command === "stage" ? ["--state-dir", "--report"] : ["--state-dir"],
-    booleanFlags: command === "open" ? ["--no-open"] : [],
+    booleanFlags: ["review", "open"].includes(command) ? ["--no-open"] : [],
   });
   const stateDir = path.resolve(parsed.values["--state-dir"] ?? getStateRoot());
   const artifactPath = requireArtifact(command, parsed.positional);
   const record = await ensureServer(stateDir);
-  if (command === "open") {
+  if (["review", "open"].includes(command)) {
     const opened = await request(record, "/api/admin/open", {
       method: "POST",
       body: JSON.stringify({ artifactPath }),
     });
     if (!parsed.values["--no-open"]) openBrowser(opened.reviewUrl);
-    process.stdout.write(`${opened.reviewUrl}\n`);
+    if (command === "open") {
+      process.stdout.write(`${opened.reviewUrl}\n`);
+      return;
+    }
+    process.stderr.write(`${renderFields([
+      ["review_url", opened.reviewUrl],
+      ["status", "waiting for one intent-bearing feedback packet"],
+    ])}\n`);
+    await waitForPacketDelivery(record, artifactPath);
     return;
   }
   if (command === "wait") {

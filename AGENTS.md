@@ -23,7 +23,7 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 - Codex and Claude Code are the first-class agent adapters.
 - The reviewer initiates Blueprint through their agent and controls approval, revision requests, staged-revision reveal, review-item actions, history inspection, and session completion.
 - The requested initial launch displays the artifact immediately. A prepared revision presents a blocking **Revision is ready** curtain, but must not reveal itself or replace visible content until the reviewer chooses **See latest revision**.
-- Feedback remains private and editable until the reviewer deliberately chooses **Approve with feedback** or **Revise using feedback**. **Approve** is final and ends the review; **Revise using feedback** sends an intent-bearing batch and keeps the review active while the agent works.
+- Feedback remains private and editable until the reviewer deliberately chooses **Approve with feedback** or **Revise using feedback**. **Approve** is final and ends the review; **Revise using feedback** sends an intent-bearing batch and keeps the review active while the agent works. Final approval is unavailable from that submission through queued, delivered, and staged states until the reviewer reveals a revision covering the request.
 - Unsent drafts are revision-scoped and must survive staged-revision reveal. Never silently re-anchor them to the newly visible revision.
 - Agent delivery must be acknowledged; failures must preserve drafts and offer a recoverable copy path.
 - Stable comment identities survive revisions. A staged revision report must name every basis packet and, for each addressed or changed item, provide before, after, summary, evidence, and a selector for the amended element. The agent may report an item addressed; only the human may accept it or reopen it. Feedback is the sole action surface and contains drafts plus non-accepted review items. Accepting an item removes its marker and Feedback card; read-only History preserves its evidence in the revealed-revision ledger.
@@ -59,7 +59,7 @@ Exclude from authored artifacts unless a later review reverses the decision: lay
 - Every decision form must keep edits local until the reviewer chooses **Queue response**. Use a unique safe form `id`, `data-blueprint-response`, meaningful control names and values, and one submit action. Queue exactly one private Feedback draft per form; re-queueing replaces that unsent draft and never auto-sends or auto-ends the session.
 - UI examples and wireframes must demonstrate decision-relevant states, transitions, or microinteractions through keyboard-operable HTML when behavior affects the choice. Static specimens are acceptable only when interaction is irrelevant; motion must be restrained and honor `prefers-reduced-motion`.
 - Give the reviewer an explicit submission path. A browser-local selection is not feedback or authorization.
-- Open one tracked feedback wait per review and retain it until the reviewer sends feedback or ends the session.
+- Launch with `blueprint review <artifact.html>` so opening and the first tracked feedback wait are one attached action; do not end the turn while it is waiting. Use separate `open` and `wait` commands only for recovery or diagnostics, and never create concurrent waits.
 - Validate review contracts and visually inspect wide, narrow, light/dark where applicable before opening the review.
 - Do not estimate development duration.
 

@@ -63,7 +63,7 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   assert.match(playbooks.stdout, /"review-loop"/);
 
   const artifactPlaybook = await run(["playbook", "artifact"]);
-  assert.match(artifactPlaybook.stdout, /playbook_version: 5/);
+  assert.match(artifactPlaybook.stdout, /playbook_version: 7/);
   assert.match(artifactPlaybook.stdout, /radios for mutually exclusive options/);
   assert.match(artifactPlaybook.stdout, /data-blueprint-response/);
   assert.match(artifactPlaybook.stdout, /Queue response/);
@@ -74,9 +74,21 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   assert.match(decisionPlaybook.stdout, /prefers-reduced-motion/);
   assert.match(decisionPlaybook.stdout, /re-queueing the same form replaces that unsent draft/);
 
+  const reviewLoopPlaybook = await run(["playbook", "review-loop"]);
+  assert.match(reviewLoopPlaybook.stdout, /blueprint review <artifact\.html>/);
+  assert.match(reviewLoopPlaybook.stdout, /Do not end the turn while that command is still waiting/);
+  assert.match(reviewLoopPlaybook.stdout, /Final approval is unavailable after a revise packet/);
+  assert.match(reviewLoopPlaybook.stdout, /until a revision covering that request is staged and the reviewer reveals it/);
+
   const focused = await run(["open", "--help"]);
   assert.match(focused.stdout, /^Usage: blueprint open/m);
+  assert.match(focused.stdout, /Prefer `blueprint review` for normal launches/);
   assert.doesNotMatch(focused.stdout, /blueprint setup/);
+
+  const atomicReviewHelp = await run(["review", "--help"]);
+  assert.match(atomicReviewHelp.stdout, /^Usage: blueprint review/m);
+  assert.match(atomicReviewHelp.stdout, /stay attached until one feedback packet arrives/);
+  assert.match(atomicReviewHelp.stdout, /standard output remains exact packet JSON/);
 
   await assert.rejects(
     () => run(["open", "--invented"]),
@@ -100,6 +112,7 @@ test("SessionStart context is compact valid hook JSON without secrets", async (t
   assert.equal(parsed.hookSpecificOutput.hookEventName, "SessionStart");
   assert.match(parsed.hookSpecificOutput.additionalContext, /Blueprint AXI is available/);
   assert.match(parsed.hookSpecificOutput.additionalContext, /active_review_count: 0/);
+  assert.match(parsed.hookSpecificOutput.additionalContext, /blueprint review <artifact\.html>/);
   assert.ok(parsed.hookSpecificOutput.additionalContext.length < 1800);
   assert.doesNotMatch(output, /reviewToken|artifactToken|adminToken/);
 
@@ -118,5 +131,7 @@ test("the packaged Blueprint skill is a generated discovery stub", async () => {
   assert.ok(actual.length < MAX_SKILL_MARKDOWN_CHARS);
   assert.match(actual, /name: blueprint/);
   assert.match(actual, /Treat the CLI as the source of truth/);
+  assert.match(actual, /blueprint review <artifact\.html>/);
+  assert.match(actual, /Do not end the turn while it is waiting/);
   assert.doesNotMatch(actual, /127\.0\.0\.1|implementation detail/i);
 });
