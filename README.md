@@ -1,105 +1,78 @@
-# Blueprint
+<h1 align="center">Blueprint</h1>
 
-Blueprint is a local-first review tool for one person and one coding agent working over one visual artifact. It is inspired by what works in Lavish Editor, but its product contract is deliberately calmer, more human-gated, and more focused on durable review cycles. Its agent-facing CLI is now formally designed as an AXI (Agent eXperience Interface).
+<p align="center"><strong>A deliberate review loop for agent-generated plans, designs, and decisions.</strong></p>
 
-## Status
+<p align="center">
+  <a href="https://www.npmjs.com/package/blueprint-local-review"><img src="https://img.shields.io/npm/v/blueprint-local-review?style=flat-square&label=npm&labelColor=0b1118&color=43e5dd" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-74e996?style=flat-square&labelColor=0b1118" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-22%2B-43e5dd?style=flat-square&labelColor=0b1118" alt="Node.js 22 or newer">
+  <img src="https://img.shields.io/badge/runtime-local--first-43e5dd?style=flat-square&labelColor=0b1118" alt="Local-first runtime">
+</p>
 
-Blueprint's approved minimum credible core and first local AXI integration slice are implemented. Version 0.2.0 is the MIT-licensed public-release candidate; broader product mechanisms remain intentionally deferred.
+Blueprint turns a self-contained HTML artifact into a local review surface. Point at exact elements, queue feedback privately, request a revision, inspect what changed, and approve only when you are ready.
 
-The working name is settled as **Blueprint**. A naming exploration was explicitly rejected and closed.
+<p align="center">
+  <img src="docs/assets/readme/blueprint-review.gif" alt="A Blueprint review moving from an initial artifact through private feedback, revision request, human-controlled reveal, amendment verification, and history" width="100%">
+</p>
 
-## Product in one paragraph
+## Why Blueprint?
 
-At the reviewer's request, an agent prepares and launches a portable HTML artifact directly into Blueprint. Decision artifacts use native selectable controls and a deliberate **Queue response** action; queueing creates one editable private Feedback draft and never sends by itself. Decision-relevant UI specimens expose representative states and transitions instead of behaving like static screenshots. Holding Alt/Option still previews the exact element under the pointer for free-form annotation, and Enter queues that comment locally. With no comments, **Approve** is the only submission. With comments, the reviewer can choose final **Approve with feedback** or **Revise using feedback**. Approval atomically ends the session and retires the review surface behind an opaque completion screen; revision requests keep the session open, receive a centered temporary confirmation, and persistently distinguish waiting-for-agent from agent-working state while retaining sent comments. Final approval stays unavailable until the requested revision is prepared and the reviewer reveals it. A prepared revision presents a blocking ready curtain; **See latest revision** reveals it without losing unsent drafts. Feedback combines drafts with non-accepted review items, while read-only History retains comments and amendments by revealed revision cycle. The human—not the agent—closes the loop.
+| | |
+| --- | --- |
+| **Point at the exact thing** | Hold Alt/Option and click any HTML element to attach precise feedback. |
+| **Draft privately** | Comments and form responses stay local until you explicitly send the queued batch. |
+| **Reveal revisions deliberately** | A prepared revision waits behind a human-controlled reveal gate. |
+| **Verify what changed** | Inspect amendment evidence, accept or reopen items, and retain a read-only history. |
 
-## Ask an agent to run the first slice
+Blueprint is intentionally personal and local-first: one person, one agent, one portable artifact. It has no telemetry and does not turn review into another chat room or ticket tracker.
 
-The reviewer never needs to operate Blueprint from a terminal. Ask Codex or Claude Code to author or open a self-contained HTML artifact in Blueprint and remain attached to its feedback. Running Blueprint with no arguments gives the agent bounded, directory-scoped live review state and contextual next commands. Before authoring, the agent must load every matching content playbook and inspect Blueprint's current visual authority:
+## Install
 
-```sh
-node bin/blueprint.js playbook
-node bin/blueprint.js design
-```
-
-Blueprint's implemented default is the unified graphite diagnostic system recorded in [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md): a fine 24-pixel non-blue grid, slate structure, cyan interaction signal, restrained semantic colors, and shared visual language across review chrome and default artifacts. Reviewer-facing instructions inside an artifact use a dedicated brass meta band so they remain visibly separate from the artifact's subject. Explicit Blueprint-specific user or repository instructions may override the default; Blueprint does not automatically inherit a design system merely because one exists in the current workspace. The earlier dark Fieldnote prototype remains a behavioral specimen, not the approved default. [`examples/blueprint-evaluation/02-triage-console.html`](examples/blueprint-evaluation/02-triage-console.html) is the first complete approved-system example; [`examples/blueprint-evaluation/04-interactive-decision.html`](examples/blueprint-evaluation/04-interactive-decision.html) demonstrates selectable decisions, queued responses, and live UI specimen states.
-
-The default agent-facing launch command is:
-
-```sh
-node bin/blueprint.js review path/to/artifact.html
-```
-
-`review` opens the initial artifact immediately and keeps the same process attached until one intent-bearing response arrives. The review URL and waiting state go to standard error, while standard output remains reserved for the exact feedback JSON. This removes the unreliable gap where an agent could open the page but forget to start polling.
-
-The lower-level recovery commands remain available:
-
-```sh
-node bin/blueprint.js open path/to/artifact.html
-node bin/blueprint.js wait path/to/artifact.html
-```
-
-`open` launches without waiting; `wait` reattaches to an existing review. Both `review` and `wait` print one immutable JSON feedback payload, including `intent: "approve" | "revise"`, then acknowledge it only after standard output has completed. After one or more revise batches and edits to the authoritative HTML, the agent can stage a revision:
-
-```sh
-node bin/blueprint.js stage path/to/artifact.html --report path/to/report.json
-```
-
-A schema-version-2 report names every `basisPacketIds` entry used for the revision. Each `addressed` or `changed` comment supplies `before`, `after`, `summary`, `evidence`, and the amended element's `selector`; `stale` records why no reliable mapping remains. Staging does not change visible content. It opens the blocking ready curtain, and only **See latest revision** reveals the new snapshot and its feedback-linked change map.
-
-Run the executable contract checks with:
-
-```sh
-npm test
-```
-
-Blueprint currently requires Node.js 22 or newer and has no runtime package dependencies. Runtime state lives outside the repository by default; agents can set `BLUEPRINT_STATE_DIR` to isolate it when testing.
-
-## Local AXI installation
-
-After publication, install the public CLI with:
+Blueprint requires Node.js 22 or newer.
 
 ```sh
 npm install --global blueprint-local-review
-blueprint
-blueprint setup status
 ```
 
-Contributors can install the current checkout with `npm install --global .`.
-
-Agent integration remains opt-in. `blueprint setup hooks` merges one reversible SessionStart context hook for Codex and Claude Code; `--agent codex` or `--agent claude` narrows the target. The command preserves unrelated settings, is idempotent, and refuses malformed configuration. Codex users must review and trust the resulting hook through `/hooks`. `blueprint setup remove` removes only Blueprint's entries.
-
-The package also includes the generated discovery skill at `skills/blueprint/SKILL.md`. It deliberately points agents to `blueprint`, `blueprint playbook`, and `blueprint design` so installed skill text does not become a second, stale manual.
-
-The public package identity is `blueprint-local-review` and the repository is MIT-licensed. Installing the package never authorizes or performs changes to a real agent configuration; hook setup remains a separate explicit action.
-
-## Repository map
-
-- [`docs/PRODUCT.md`](docs/PRODUCT.md) — product contract, settled decisions, non-goals, and open questions.
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — approved minimum-core architecture, protocol, recovery, and security contract.
-- [`docs/AXI.md`](docs/AXI.md) — approved agent-interface, hook integration, packaging, and authority contract.
-- [`docs/VISUAL_SYSTEM.md`](docs/VISUAL_SYSTEM.md) — approved default visual language and artifact meta-instruction treatment.
-- [`docs/LAVISH_RESEARCH.md`](docs/LAVISH_RESEARCH.md) — evidence-backed notes about the Lavish architecture and the reuse boundary.
-- [`docs/CONTINUATION.md`](docs/CONTINUATION.md) — exact handoff state and recommended next session.
-- [`AGENTS.md`](AGENTS.md) — operating rules for agents working in this repository.
-- [`src/`](src) and [`bin/blueprint.js`](bin/blueprint.js) — the approved loopback service, durable store, sandbox injection, browser shell, and CLI.
-- [`test/`](test) — executable protocol, recovery, authority, and full-cycle checks.
-
-## Resume the workspace
-
-Clone the repository and run the checks:
+Connect the agent you use:
 
 ```sh
-npm run check
+blueprint setup hooks --agent codex
+# or
+blueprint setup hooks --agent claude
 ```
 
-Read `AGENTS.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, and `docs/CONTINUATION.md` before changing the implementation. Keep work inside the approved first vertical slice unless the user authorizes a broader decision.
+Installation alone never edits agent configuration. Hook setup is explicit, reversible, and preserves unrelated settings.
 
-## Historical research reference
+## Use it
 
-Blueprint's Lavish comparison used:
+Ask your agent to prepare or open a review. You do not need to operate Blueprint from the terminal during the review.
 
-- Repository: `https://github.com/kunchenguid/lavish-axi.git`
-- Release: `lavish-axi-v0.1.63`
-- Commit: `ffd7aacff563b8bca09eb7ebfb17c14faeb968ce`
+> Prepare this decision as a Blueprint review and wait for my feedback.
 
-The checkout is deliberately not carried in this repository. Lavish is MIT-licensed, and Blueprint copies no Lavish implementation code. Any later reuse must be separately justified against the pinned source and preserve the relevant license and third-party notices.
+The loop is simple:
+
+1. **Your agent opens an artifact.** The initial HTML appears immediately.
+2. **You review it.** Select options, annotate exact elements, and queue private feedback.
+3. **Your agent revises it.** The current revision remains visible while the agent works.
+4. **You verify and approve.** Reveal the staged revision, inspect its amendment evidence, and close the review when it is right.
+
+## What Blueprint is good for
+
+- Product and architecture decisions that benefit from concrete visual options.
+- UI proposals and wireframes where states and transitions matter.
+- Plans and comparisons that need precise, element-level feedback.
+- Review cycles where “the agent says it changed” is not enough evidence.
+
+Blueprint is a specialist review surface, not a replacement for your coding agent. Codex and Claude Code remain where the conversation and implementation happen; Blueprint owns the human approval loop around the artifact.
+
+## Acknowledgements
+
+Blueprint is heavily inspired by [Lavish](https://github.com/kunchenguid/lavish-axi), created by [Kun Chen](https://github.com/kunchenguid). Lavish demonstrated how a local, agent-operated HTML review surface can make visual feedback precise and interactive. Blueprint builds on that product idea with its own narrower, human-gated revision and approval workflow.
+
+## Learn more
+
+- [Product principles and settled decisions](docs/PRODUCT.md)
+- [Architecture, security, and recovery](docs/ARCHITECTURE.md)
+- [Development and contributor notes](docs/DEVELOPMENT.md)
+- [MIT license](LICENSE)
