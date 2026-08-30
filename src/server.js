@@ -1,9 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { rm } from "node:fs/promises";
 import { createServer } from "node:http";
 
 import { injectAnnotationSdk } from "./artifact.js";
-import { atomicWriteJson } from "./atomic.js";
+import { atomicWriteJson, readJson } from "./atomic.js";
 import { getStateRoot, resolveInside } from "./paths.js";
 import { BlueprintError, SessionStore } from "./session-store.js";
 import { renderReviewShell } from "./ui.js";
@@ -250,6 +251,18 @@ export async function startBlueprintServer(options = {}) {
     });
   }
 
+  async function removeOwnServerRecord() {
+    if (options.writeServerRecord === false) return;
+    const recordPath = resolveInside(stateDir, "server.json");
+    try {
+      const record = await readJson(recordPath);
+      if (record.pid !== process.pid || record.port !== address.port || record.adminToken !== adminToken) return;
+      await rm(recordPath, { force: true });
+    } catch (error) {
+      if (error?.code !== "ENOENT") logger.error?.(error);
+    }
+  }
+
   return {
     server,
     store,
@@ -257,10 +270,11 @@ export async function startBlueprintServer(options = {}) {
     adminToken,
     origin,
     port: address.port,
-    close() {
-      return new Promise((resolve, reject) => {
+    async close() {
+      await new Promise((resolve, reject) => {
         server.close((error) => error ? reject(error) : resolve());
       });
+      await removeOwnServerRecord();
     },
   };
 }

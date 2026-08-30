@@ -4,7 +4,7 @@ Blueprint is a local-first review tool for one person and one coding agent worki
 
 ## Status
 
-Blueprint's approved minimum credible core and first local AXI integration slice are implemented for local user testing. Broader product mechanisms remain in discovery and are intentionally deferred.
+Blueprint's approved minimum credible core and first local AXI integration slice are implemented. Version 0.2.0 is the MIT-licensed public-release candidate; broader product mechanisms remain intentionally deferred.
 
 The working name is settled as **Blueprint**. A naming exploration was explicitly rejected and closed.
 
@@ -56,19 +56,21 @@ Blueprint currently requires Node.js 22 or newer and has no runtime package depe
 
 ## Local AXI installation
 
-The repository can now be packed or installed locally as an npm CLI without publishing it:
+After publication, install the public CLI with:
 
 ```sh
-npm install --global .
+npm install --global blueprint-local-review
 blueprint
 blueprint setup status
 ```
+
+Contributors can install the current checkout with `npm install --global .`.
 
 Agent integration remains opt-in. `blueprint setup hooks` merges one reversible SessionStart context hook for Codex and Claude Code; `--agent codex` or `--agent claude` narrows the target. The command preserves unrelated settings, is idempotent, and refuses malformed configuration. Codex users must review and trust the resulting hook through `/hooks`. `blueprint setup remove` removes only Blueprint's entries.
 
 The package also includes the generated discovery skill at `skills/blueprint/SKILL.md`. It deliberately points agents to `blueprint`, `blueprint playbook`, and `blueprint design` so installed skill text does not become a second, stale manual.
 
-The npm name and license are not approved for public release. `package.json` therefore remains `private` and `UNLICENSED`; local packing and installation do not authorize publication or changes to a real agent configuration.
+The public package identity is `blueprint-local-review` and the repository is MIT-licensed. Installing the package never authorizes or performs changes to a real agent configuration; hook setup remains a separate explicit action.
 
 ## Repository map
 
@@ -79,26 +81,25 @@ The npm name and license are not approved for public release. `package.json` the
 - [`docs/LAVISH_RESEARCH.md`](docs/LAVISH_RESEARCH.md) — evidence-backed notes about the Lavish architecture and the reuse boundary.
 - [`docs/CONTINUATION.md`](docs/CONTINUATION.md) — exact handoff state and recommended next session.
 - [`AGENTS.md`](AGENTS.md) — operating rules for agents working in this repository.
-- [`upstream/lavish-axi`](upstream/lavish-axi) — read-only Git submodule pinned to the researched Lavish release.
 - [`src/`](src) and [`bin/blueprint.js`](bin/blueprint.js) — the approved loopback service, durable store, sandbox injection, browser shell, and CLI.
 - [`test/`](test) — executable protocol, recovery, authority, and full-cycle checks.
 
 ## Resume the workspace
 
-Clone the repository, then initialize the research dependency:
+Clone the repository and run the checks:
 
 ```sh
-git submodule update --init --recursive
+npm run check
 ```
 
 Read `AGENTS.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`, and `docs/CONTINUATION.md` before changing the implementation. Keep work inside the approved first vertical slice unless the user authorizes a broader decision.
 
-## Upstream reference
+## Historical research reference
 
-The Lavish submodule is pinned to:
+Blueprint's Lavish comparison used:
 
 - Repository: `https://github.com/kunchenguid/lavish-axi.git`
-- Release: `lavish-axi-v0.1.62`
-- Commit: `a7ddbbaf585e101793938c6dacf8bb0c11e09003`
+- Release: `lavish-axi-v0.1.63`
+- Commit: `ffd7aacff563b8bca09eb7ebfb17c14faeb968ce`
 
-Lavish is MIT-licensed. The approved first slice copies no Lavish implementation code. Any later reuse must be separately justified and preserve the relevant license and third-party notices.
+The checkout is deliberately not carried in this repository. Lavish is MIT-licensed, and Blueprint copies no Lavish implementation code. Any later reuse must be separately justified against the pinned source and preserve the relevant license and third-party notices.

@@ -6,7 +6,7 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 
 1. Read `README.md`, `docs/PRODUCT.md`, and `docs/CONTINUATION.md`.
 2. Treat any local `.lavish/` artifacts as review history, not as implementation specifications. The durable approved contracts live in `docs/`.
-3. Treat `upstream/lavish-axi` as a read-only research submodule. Do not modify it, advance its pin, or copy code from it without an explicit, documented reason.
+3. Treat `docs/LAVISH_RESEARCH.md` as the durable Lavish research record. Blueprint no longer carries a Lavish source checkout; consult the exact pinned upstream commit linked there, and do not copy code without an explicit, documented reason.
 
 ## Current phase and authority
 

@@ -1,6 +1,6 @@
 # Blueprint AXI contract
 
-Status: direction and first local implementation slice approved on 2026-08-29; atomic review launch-and-wait contract and this computer's Codex integration update approved on 2026-08-30. Public publication, package naming, licensing, and modifications to other agent installations remain separate authority gates.
+Status: direction and first local implementation slice approved on 2026-08-29; atomic review launch-and-wait, this computer's Codex integration update, the `blueprint-local-review` public identity, MIT licensing, and a validation-gated npm publication path approved on 2026-08-30. Modifications to other agent installations remain separate authority gates.
 
 Blueprint is formally an **Agent eXperience Interface (AXI)**: its command-line output is a product interface for capable agents, while the browser remains the human review surface. The AXI layer does not weaken Blueprint's product invariants. One human, one agent, one authoritative HTML artifact, revision-scoped private drafts, intent-bearing acknowledged feedback, reviewer-controlled revision reveal, a unified Feedback action surface, and read-only revision-cycle History remain the governing contract.
 
@@ -13,7 +13,7 @@ The approved target is:
 3. The npm package ships a generated, on-demand `blueprint` skill that points agents back to the current CLI guidance.
 4. An `npx` path may later provide zero-setup evaluation, but persistent local sessions make a global installation the preferred repeated-use model.
 
-The current package remains named `blueprint-local-review`, marked `private`, and licensed `UNLICENSED`. It may be packed and installed locally, but it must not be published until the public npm name and license are separately approved.
+The public package is named `blueprint-local-review` and licensed MIT. Version 0.2.0 is the first public-release candidate. Publication requires the enforced coverage and package-boundary checks, isolated tarball installation, browser and recovery evidence, and an exact final review of the artifact to be published.
 
 ## AXI interface principles
 
@@ -82,13 +82,16 @@ The hook invokes `blueprint hook context --agent <agent>`. Its JSON output conta
 
 ## Package boundary
 
-The local npm tarball contains only the executable, runtime source, generated Blueprint skill, and README. It has no runtime dependencies and retains the Node.js 22 minimum. The current slice does not add:
+The npm tarball contains only the executable, runtime source, skill generator, generated Blueprint skill, README, license, and package metadata. It has no runtime dependencies and retains the Node.js 22 minimum. The current slice does not add:
 
-- public npm publication;
 - a marketplace listing or plugin bundle;
 - desktop packaging, installers, updates, or auto-start;
 - automatic modification of Codex or Claude configuration during npm installation;
 - telemetry or hosted services; or
-- source copied from `upstream/lavish-axi`.
+- source copied from Lavish.
 
 Those remain separate decisions and authority gates.
+
+## Public-release evidence gate
+
+The 0.2.0 candidate enforces at least 90% line, 65% branch, and 90% function coverage through Node's built-in test runner. The package contract independently dry-runs `npm pack`, requires the CLI, runtime, generated skill, README, and MIT license, and rejects any unexpected path. The exact tarball must then install into a fresh prefix, complete the isolated Codex and Claude hook lifecycle, run on the declared Node 22 minimum, pass a real-browser wide/narrow and service-restart cycle, and pass `npm publish --dry-run` before publication.

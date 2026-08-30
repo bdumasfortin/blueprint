@@ -1,6 +1,6 @@
 # Blueprint product contract
 
-Status: interaction and minimum-core architecture contracts approved for local implementation and user testing on 2026-08-28; AXI distribution direction, its first local implementation slice, and the approval/revision lifecycle approved on 2026-08-29; pending-revision approval gating and atomic launch-and-wait approved on 2026-08-30. This document records approved directions and explicitly separates them from testing hypotheses and deferred product choices.
+Status: interaction and minimum-core architecture contracts approved for local implementation and user testing on 2026-08-28; AXI distribution direction, its first local implementation slice, and the approval/revision lifecycle approved on 2026-08-29; pending-revision approval gating, atomic launch-and-wait, specialist positioning, MIT licensing direction, and a validation-gated npm publication path approved on 2026-08-30. This document records approved directions and explicitly separates them from testing hypotheses and deferred product choices.
 
 ## Problem
 
@@ -25,12 +25,13 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 ### Audience and scope
 
 - One human, one agent, one artifact.
-- Personal/local-first. Friends and colleagues can install their own private copies; Blueprint is not a shared multi-user workspace.
+- Personal/local-first. Friends and colleagues use their own local installations; Blueprint is not a shared multi-user workspace.
+- Blueprint owns the specialist wedge for consequential agent-generated plans, architecture, and UI proposals where staged reveal, amendment evidence, human acceptance, final sign-off, and adaptation to the reviewer's visual and workflow preferences justify deliberate friction. It is not positioned as a generally superior or broader replacement for Lavish.
 - Codex and Claude Code are the initial first-class adapters.
 - The human entry point is conversational: the reviewer asks their agent to start or continue Blueprint and is never expected to invoke the CLI. The CLI is an agent-adapter surface.
 - The default agent launch is `blueprint review <artifact.html>`, which atomically opens the reviewer surface and retains the first feedback wait. Separate `open` and `wait` commands are recovery and diagnostic tools, not the normal launch path.
 - Blueprint is formally an AXI. The approved distribution direction is a global npm CLI with explicit, reversible SessionStart hooks for Codex and Claude Code, plus a generated on-demand skill and later `npx` evaluation path.
-- Installing the npm package alone must not edit agent configuration. Hook setup is a separate explicit action. Public package naming, licensing, publication, and changes to a user's real agent installation remain separate authority gates.
+- Installing the npm package alone must not edit agent configuration. Hook setup is a separate explicit action. MIT is the approved license, `blueprint-local-review` is the candidate public identity, and version 0.2.0 is the first release candidate. No public package currently resolves under that name; final registry acceptance is proven only by publication. Public npm publication requires the enforced validation, browser and recovery coverage, isolated package checks, and an authenticated npm session. Changes to a user's real agent installation remain a separate authority gate.
 - Ground-up product design informed by Lavish and selected MIT code, not a fork that inherits the entire product architecture.
 
 ### Human control
@@ -105,8 +106,8 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 - Optional final output: a clean portable HTML artifact plus a compact machine-readable decision record.
 - Sandboxed review and local operation are defaults.
 - No telemetry.
-- External publishing is outside the core product.
-- Public npm publication is not authorized by the local AXI implementation. The current package remains private and unlicensed until package identity and license are explicitly approved.
+- Artifact publishing and hosted sharing remain outside the core product.
+- MIT is the approved repository license. Public npm publication is an approved distribution goal after the readiness gates above are satisfied; it is not evidence that the current package is already production-ready or published.
 
 ## Keep / modify / remove from Lavish
 
@@ -159,7 +160,7 @@ The first user-testing slice uses one loopback Node.js process, a framework-free
 
 For this slice, packet delivery is at least once and duplicate-safe by packet ID; a packet remains queued until the CLI has fully written it and acknowledged it. The atomic `review` command opens and waits in one process, writes launch diagnostics to standard error, and reserves standard output for one exact packet. The initial snapshot is visible immediately after the requested launch. Approval ends the session, **Revise using feedback** keeps it active, and staging never changes the visible revision. Approval is rejected while any revise packet lacks a revealed basis revision or while any staged revision is unrevealed. The blocking reveal action, accept, reopen, approval, and end-session remain reviewer-only actions.
 
-The initial reuse decision is to copy no implementation code from Lavish. Export schemas, attachments, non-self-contained artifacts, public distribution, marketplace packaging, and desktop packaging remain deferred until real sessions show what is needed.
+The initial reuse decision is to copy no implementation code from Lavish. The research submodule was removed during the distribution-readiness work; its exact source pin and findings remain in `docs/LAVISH_RESEARCH.md`. Export schemas, attachments, non-self-contained artifacts, marketplace packaging, and desktop packaging remain deferred until real sessions show what is needed.
 
 ## Evidence gate for implementation
 
@@ -177,3 +178,7 @@ The user then approved the final-approval/revision-request lifecycle on 2026-08-
 On 2026-08-30 the user explicitly removed approval as a valid action while the agent is preparing a requested revision. The implemented gate begins when the revise packet is submitted, covers waiting, working, and staged-but-unrevealed states, and ends only after the reviewer reveals a revision that names the request as a basis.
 
 On 2026-08-30 the user also approved the recommended atomic feedback attachment after observing agents sometimes stop after opening a review. `blueprint review <artifact.html>` is now the default launch-and-first-wait command; `open` and `wait` remain compatible lower-level recovery surfaces. The packet schema and browser authority model are unchanged.
+
+On 2026-08-30 the user approved the specialist-wedge positioning after a direct Blueprint-versus-Lavish comparison. The approved next phase is to adopt MIT, strengthen validation and test depth including recovery coverage, remove the Lavish research submodule, and then publish the package to npm. Publication remains conditional on completing and verifying those readiness steps; the approval does not claim present feature parity, production maturity, or a public release that has not occurred.
+
+Later on 2026-08-30 the user approved the exact 0.2.0 release candidate and ordered sequence: commit and push the matching source to `origin/main`, observe the Windows/Linux Node 22/24 CI matrix, authenticate npm, publish the reviewed `blueprint-local-review@0.2.0` tarball as `latest`, verify the registry, install the published package on this computer, verify the existing Codex integration, then create and push `v0.2.0`. Any CI, authentication, integrity, publication, installation, or verification failure stops the sequence without silent repacking.

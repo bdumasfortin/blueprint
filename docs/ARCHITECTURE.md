@@ -130,8 +130,8 @@ The following are implementation details, not permanent product commitments:
 - Portable decision-record export.
 - Desktop packaging, auto-start, updates, or installers.
 - Database, frontend framework, WebSockets, filesystem watching, publishing, telemetry, hosted collaboration, or full in-tool chat.
-- Public npm publication, package-name selection, licensing, marketplace plugins, and desktop distribution.
-- Any source-code reuse from `upstream/lavish-axi`.
+- Marketplace plugins and desktop distribution.
+- Any source-code reuse from Lavish's pinned upstream research commit.
 
 These mechanisms should be added only when observed review sessions demonstrate that the smaller loop is inadequate.
 
@@ -141,6 +141,7 @@ The implementation must exercise:
 
 - canonical path and route-boundary rejection;
 - atomic state survival across a store restart;
+- stale service-discovery replacement, race-safe discovery cleanup, and complete service restart with staged revision and private-draft recovery;
 - same-ID packet redelivery before acknowledgement and no delivery after acknowledgement;
 - atomic review launch, quiet-timeout persistence, exact packet-only standard output, and lower-level open/wait compatibility;
 - approve-without-comments finality, approve-with-feedback finality, revise-with-feedback continuity, and approval rejection across queued, delivered, and staged revision work until reveal;
@@ -151,7 +152,8 @@ The implementation must exercise:
 - reviewer-token versus agent-token authority separation;
 - bounded content-first AXI home output and definitive empty states;
 - structured failures and unknown-option exit code `2`;
-- generated-skill drift detection; and
-- idempotent hook install, status, repair, and removal without overwriting unrelated or malformed agent configuration.
+- generated-skill drift detection;
+- idempotent hook install, status, repair, and removal without overwriting unrelated or malformed agent configuration; and
+- exact npm package-boundary enforcement with no runtime state, review history, tests, research checkout, or repository-only files in the tarball.
 
 Browser QA must additionally inspect the docked layout, modifier-held target preview, Alt/Option-click element annotation and editor focus, combined private-draft and review-item Feedback flow, context-sensitive approval/revision actions including pending-revision approval disablement, blocking ready curtain, preserved drafts, sandbox response policy, feedback-linked change map, accepted-item removal, read-only revision-cycle History, and accept/reopen flow at wide and narrow widths.

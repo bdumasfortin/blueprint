@@ -1,7 +1,6 @@
 {
   "name": "blueprint-local-review",
-  "version": "0.1.1",
-  "private": true,
+  "version": "0.2.0",
   "description": "A human-gated, local-first review loop for one person, one agent, and one HTML artifact.",
   "type": "module",
   "bin": {
@@ -12,6 +11,7 @@
     "src",
     "scripts/build-skill.js",
     "skills/blueprint",
+    "LICENSE",
     "README.md"
   ],
   "scripts": {
@@ -19,7 +19,9 @@
     "build:skill": "node scripts/build-skill.js",
     "check:skill": "node scripts/build-skill.js --check",
     "test": "node --test --test-reporter=spec \"test/*.test.js\"",
-    "check": "node --check bin/blueprint.js && npm run check:skill && node --test --test-reporter=spec \"test/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=65 --test-coverage-functions=90 --test-reporter=spec \"test/*.test.js\"",
+    "check:package": "node scripts/check-package.js",
+    "check": "node --check bin/blueprint.js && npm run check:skill && npm run test:coverage && npm run check:package",
     "prepack": "npm run check:skill"
   },
   "engines": {
@@ -32,5 +34,16 @@
     "review",
     "local-first"
   ],
-  "license": "UNLICENSED"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bdumasfortin/blueprint.git"
+  },
+  "homepage": "https://github.com/bdumasfortin/blueprint#readme",
+  "bugs": {
+    "url": "https://github.com/bdumasfortin/blueprint/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -19,7 +19,7 @@ Last updated: 2026-08-30.
 - `blueprint setup hooks|status|remove` supports opt-in SessionStart context for Codex and Claude Code. It preserves unrelated JSON, repairs a recognizable stale entry, refuses malformed configuration, and removes only Blueprint's handler. npm installation itself changes no agent configuration.
 - On 2026-08-29 the user explicitly approved the recommended personal Codex cutover after a terminal Lavish review. The active global `C:\Users\Bryan\.codex\AGENTS.md` now names Blueprint as the default non-trivial review workflow, `C:\Users\Bryan\.codex\skills\blueprint` contains the packaged generated discovery skill, and `C:\Users\Bryan\.codex\hooks.json` contains only Blueprint's SessionStart hook. The previous global instructions, dual-hook file, and complete `lavish-local-review` personal skill are preserved with SHA-256 hashes and restore instructions at `C:\Users\Bryan\.codex-backups\lavish-cutover-2026-08-29-124632`. `lavish-axi@0.1.62` and all `.lavish` review history remain installed and untouched for rollback.
 - Hook context is bounded to three directory-scoped active reviews and exposes no reviewer, artifact, or admin tokens. It does not open reviews, control tools, reveal revisions, or grant authority.
-- The current package remains `private` and `UNLICENSED`. Public npm naming, licensing, publication, marketplace/plugin distribution, and changes to Claude Code remain separate approval gates. On 2026-08-30 the user explicitly authorized adapting the active Codex skill and instructions, installing release `0.1.1` on this computer, committing it, and pushing the current branch.
+- The repository is now prepared as the MIT-licensed `blueprint-local-review@0.2.0` public-release candidate. `private` was removed, public package metadata was added, and `blueprint-local-review` currently returns npm registry `E404`, so no public package resolves under that name; final registry acceptance is not proven until publication. This computer is not authenticated to npm (`npm whoami` returns `ENEEDAUTH`), so no publication has occurred. The globally installed package remains release `0.1.1`; no active agent integration was changed by this readiness work.
 - The reviewer has explicitly said they will always ask Codex to launch Blueprint and will never invoke it themselves. Treat the CLI as an agent-adapter surface, not a human onboarding path.
 - After direct testing showed that agents sometimes completed `open` without starting `wait`, the reviewer approved `blueprint review <artifact.html>` as AXI contract version 2's default launch. One command now opens the review and remains attached until exactly one packet is delivered and acknowledged. Separate `open` and `wait` remain compatible recovery and diagnostic surfaces.
 - Direct user testing removed the initial reveal gate: a requested launch displays the first snapshot immediately. Staged revisions remain human-revealed through the approved blocking ready curtain.
@@ -57,7 +57,7 @@ Last updated: 2026-08-30.
 
 ## Validation completed
 
-`npm run check` passes twenty-six executable checks covering:
+`npm run check` passes twenty-nine executable checks and enforces minimum coverage of 90% lines, 65% branches, and 90% functions. The Node 24 run observed 92.29% lines, 71.13% branches, and 94.33% functions. The checks cover:
 
 - atomic replacement interruption;
 - canonical HTML and state path boundaries;
@@ -77,14 +77,17 @@ Last updated: 2026-08-30.
 - agent, reviewer, and read-only artifact authority separation;
 - a spawned CLI cycle from open through acknowledged packet and staged report;
 - feedback-wait recovery after a quiet request timeout;
+- race-safe service-discovery cleanup, stale-record replacement, and healthy automatic service restart;
+- complete service restart with an unrevealed staged revision, amendment evidence, and a revision-scoped private draft preserved through reveal;
 - atomic review launch-and-wait, immediate URL diagnostics on standard error, packet-only JSON on standard output, and acknowledgement before exit;
 - CLI design-authority guidance that rejects automatic workspace-design inheritance and identifies the approved unified graphite diagnostic default;
 - bounded content-first AXI home output, `--full`, directory scoping, definitive empty states, and token exclusion;
 - versioned playbook discovery, focused help, and structured unknown-option exit code `2`;
 - valid bounded SessionStart hook JSON for Codex and Claude Code;
 - generated skill drift detection and skill-format validation;
-- idempotent hook install, status, stale-entry repair, and removal while preserving unrelated agent settings; and
-- refusal to overwrite malformed agent configuration.
+- idempotent hook install, status, stale-entry repair, and removal while preserving unrelated agent settings;
+- refusal to overwrite malformed agent configuration; and
+- an exact npm package allowlist that requires the MIT license and rejects runtime state, review history, tests, examples, docs, and research checkout content.
 
 The generated skill also passes the Codex skill creator's `quick_validate.py` check.
 
@@ -95,6 +98,8 @@ The earlier `npm pack` check produced a 34,495-byte local `blueprint-local-revie
 Release `0.1.0` produced a 45,918-byte tarball with 17 entries and an unpacked size of 178,793 bytes. The exact tarball installed successfully into a fresh temporary npm prefix and its packaged CLI help completed successfully. With explicit user authorization, the computer-wide npm link now reports `blueprint-local-review@0.1.0`, the Codex SessionStart integration still reports installed without repair, and the active personal Blueprint skill is byte-identical to the packaged generated skill. Nothing was published to npm, and no Claude configuration was changed.
 
 Release `0.1.1` produced a 46,892-byte tarball with 17 entries and an unpacked size of 182,548 bytes (`sha512-X1gU7M/mpyW9GJ/A0rIIMgYJ4ZAzo/eC04KP6ztGgDIJUiCSPWjlth0+1QcZ9XLCs2YsGNTyx0/i6mq7HnMuNA==`). The exact tarball installed successfully into a fresh isolated npm prefix and its packaged CLI help completed successfully before that same tarball replaced the computer-wide `0.1.0` repository link. The installed global package reports `blueprint-local-review@0.1.1`; the installed package, repository, and active personal Blueprint skills are byte-identical and pass the Codex skill validator; the active personal instructions require atomic `blueprint review`; the Codex SessionStart integration remains installed without repair; and the running loopback service now executes the globally installed `0.1.1` package. Nothing was published to npm, and no Claude configuration was changed.
+
+Release candidate `0.2.0` produced a 47,852-byte tarball with 18 entries and an unpacked size of 184,697 bytes (`sha512-oy3ap8UdMohiZLvVs6OJqQjjubKsAlhCO+NfIb562598O/pENTWNrOnsYh340tbrchn5/xYmbMbhV0lTIEClcQ==`). The exact tarball installed into a fresh isolated prefix, its CLI ran on Node `22.23.2`, and the packaged Codex and Claude hook install/status/remove cycle completed against an isolated configuration home. `npm publish --dry-run` confirmed public `latest` publication metadata and the exact 18-file payload. No real npm package or agent configuration changed.
 
 The browser shell was also exercised in the in-app browser at wide and narrow widths. Observed behavior:
 
@@ -128,6 +133,7 @@ The browser shell was also exercised in the in-app browser at wide and narrow wi
 - the interactive decision contract was exercised in an isolated real-browser review at 1440 × 1000 and 390 × 844. Selecting another radio option created no draft or packet. **Queue response** created one durable form-anchored draft and exposed the shell submission actions; selecting a different option and queueing again replaced that draft in place while its count remained one and packet count remained zero. Radio selection with Space and queueing with Enter produced the same single-draft result. The rest/sending/success/failure controls changed representative specimen state and copy, the narrow artifact and shell had zero horizontal overflow, and the browser console remained clean.
 - the pending-revision approval gate was exercised in an isolated real-browser cycle: approval began enabled, became disabled immediately after **Revise using feedback**, remained disabled after the agent acknowledged the request and while the revision-ready curtain was staged, then returned only after **See latest revision**. The persistent waiting/working status explained the gate, the disabled control carried its explanatory title, and the browser console had no warnings or errors.
 - the installed, globally linked `blueprint review --no-open` command was exercised against a fresh real-browser session. It emitted the review URL and attached waiting state immediately on standard error, remained running with empty standard output, and returned only after browser approval produced one exact JSON packet on standard output. The packet was acknowledged, the command exited cleanly, and the browser console had no warnings or errors.
+- the isolated packed 0.2.0 CLI served the interactive decision specimen at 1440 × 1000 and 390 × 844. State controls remained live, Queue response created one private Feedback draft without sending, the draft survived reload and a complete service stop/restart, both layouts had zero horizontal overflow, and the browser console had no warnings or errors. Graceful stop removed only the active discovery record.
 
 ## Decision history
 
@@ -136,7 +142,9 @@ The browser shell was also exercised in the in-app browser at wide and narrow wi
 - The 2026-08-30 feedback-attachment review explicitly selected Option A: add `blueprint review` as the default atomic open-and-wait command while preserving separate `open` and `wait` recovery surfaces. The approval authorized the local CLI, AXI guidance, generated skill, hook context, tests, and durable documentation; it did not authorize modifying the active personal Codex installation.
 - `examples/blueprint-evaluation/01-decision-brief.html` preserves the original Fieldnote example that exposed the design-contract mismatch; `01-decision-brief-blueprint.html` is the revised dark behavioral specimen, not a default-design example.
 - The product name remains **Blueprint**.
-- Lavish remains pinned read-only at `upstream/lavish-axi`, commit `a7ddbbaf585e101793938c6dacf8bb0c11e09003` (`lavish-axi-v0.1.62`).
+- At the user's explicit request, the Lavish research checkout was refreshed on 2026-08-30 to commit `ffd7aacff563b8bca09eb7ebfb17c14faeb968ce` (`lavish-axi-v0.1.63`) for the comparative audit, then removed during the approved distribution-readiness work. The durable source pin and findings remain in `docs/LAVISH_RESEARCH.md`; no Lavish implementation code was copied.
+- The user approved the specialist-wedge position and added that Blueprint's adaptation to their exact visual and workflow preferences is part of its value. They selected MIT licensing and directed stronger validation, tests, recovery coverage, research-submodule removal, and npm publication. The local readiness work is complete in the 0.2.0 candidate; publication now depends on the approved source push, observed CI, and npm authentication.
+- The user then approved the exact 0.2.0 release-readiness review with Option A and both follow-ups: commit and push the matching source, require the new Windows/Linux Node 22/24 CI matrix, authenticate npm, publish and verify the exact reviewed tarball, install the public 0.2.0 package on this computer, verify the existing Codex integration, and create and push `v0.2.0` only after registry verification. Failures stop the sequence without repacking.
 
 ## Deliberately deferred
 
@@ -144,20 +152,19 @@ The browser shell was also exercised in the in-app browser at wide and narrow wi
 - Status filters, duplicate suggestions, and guarded batch acceptance.
 - Portable decision-record export.
 - Desktop packaging, installers, updates, auto-start, and production lifecycle work.
-- Database, frontend framework, WebSockets, filesystem watching, publishing, telemetry, hosted collaboration, or full in-tool chat.
-- Public npm publication, final package naming, license selection, marketplace/plugin distribution, and desktop distribution.
-- Any reuse of source code from `upstream/lavish-axi`.
+- Database, frontend framework, WebSockets, filesystem watching, artifact publishing, telemetry, hosted collaboration, or full in-tool chat.
+- Marketplace/plugin distribution and desktop distribution.
+- Any reuse of source code from Lavish's pinned upstream research commit.
 
 Do not implement these merely because the core exists. The user explicitly identified overcomplication as the main risk; real sessions should supply the evidence for expansion or simplification.
 
 ## Recommended next action
 
-Start a fresh Codex task in another project and exercise Blueprint as the sole default review workflow; the current task retains its startup instruction chain and cannot prove new-task discovery. Continue the Beacon triage-console session as the primary visual and behavioral testing track when useful. Resolve the public npm name and license in a later decision review before any publication.
+Execute the approved ordered release sequence. The candidate tarball is `C:\GIT\blueprint\.blueprint\release-0.2.0-final\blueprint-local-review-0.2.0.tgz` with integrity `sha512-oy3ap8UdMohiZLvVs6OJqQjjubKsAlhCO+NfIb562598O/pENTWNrOnsYh340tbrchn5/xYmbMbhV0lTIEClcQ==`. Commit and push the matching source first, wait for all four CI cells, authenticate npm, publish that exact tarball, verify registry metadata and public installation, install it on this computer without altering agent hooks automatically, verify the existing Codex integration, then create and push `v0.2.0`.
 
 ## Resume checks
 
 ```sh
-git submodule update --init --recursive
 git status --short
 npm run check
 ```
