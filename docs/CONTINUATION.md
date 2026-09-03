@@ -4,7 +4,7 @@ Last updated: 2026-09-03.
 
 ## Current state
 
-- The workspace is on `main`, fast-forwarded to include the approved review-tab identity, Ask-first content contract, and completion hint. The user authorized preparing, publishing, and installing `blueprint-local-review@0.2.2` from `main`. Version 0.2.1 remains public and installed until the exact-package release gates complete.
+- The workspace is on `main`, including the approved review-tab identity, Ask-first content contract, and completion hint. `blueprint-local-review@0.2.2` is published as npm `latest`, installed globally, and running in the local service. Release source is `78cb278`; the exact registry and installed bytes match the tested tarball. Existing Codex and Claude configuration is unchanged.
 - The user explicitly approved the minimum credible architecture and authorized local implementation of its exact first vertical slice on 2026-08-28.
 - `docs/ARCHITECTURE.md` is the approved protocol, persistence, authority, security, and deferral contract.
 - The minimum slice is implemented with Node.js built-ins only. There are no runtime package dependencies and no copied Lavish implementation files.
@@ -107,6 +107,8 @@ Release `0.2.0` produced a 47,852-byte tarball with 18 entries and an unpacked s
 
 Release `0.2.1` produced a 47,414-byte tarball with 16 entries and an unpacked size of 188,717 bytes (`sha512-OMhDFDmnGvLoyb72kqctU0WJdsfo2pxXqN58NN2jhb9eRisPvkAU5niB5r+1Y6aZe9nNI5a4ZIGxs4xiX095Lg==`, SHA-1 `74e6a176f093ccfbd81826ee444a69779d1ba55b`, SHA-256 `8755230564ecb99b35ed21378bed41329bf64b603ea6de6b5d9ed18f910d6dbd`). The exact tarball from source commit `f024c80` installed into a fresh isolated prefix, passed the CLI and Codex/Claude hook lifecycle with zero skill artifacts, and passed real-browser release smoke at wide and narrow widths. GitHub Actions run `33708997594` passed the complete Windows/Linux × Node 22/24 matrix before publication. npm then published those unchanged bytes as `blueprint-local-review@0.2.1` and moved `latest` to 0.2.1; registry integrity and SHA-1 match, and a fresh public install repeated the isolated CLI and hook checks. The public package replaced this computer's global 0.2.0 installation without changing the existing Codex hook or recreating the removed personal skill. The loopback service was restarted from the published 0.2.1 installation and passed its authenticated health check.
 
+Release `0.2.2` produced a 48,476-byte tarball with 16 entries and an unpacked size of 191,826 bytes (`sha512-shhl2tzKUnl20bTnG6bvICKftq1Gz0I6S8548qcUZaXPDIIew+qlAXNou4hGgNPHkFP3lol8xBDENntlNltY3g==`, SHA-1 `dcacb017ef46feb67a628c0d2338446811480237`, SHA-256 `0e91b283202a0d4276051912d6f5eea5a4308ea27c725a475a0bba8ae0e7e3e1`). The source commit `78cb278` is on `main`; CI run `33791520015` passed all four Windows/Linux × Node 22/24 jobs. The exact tarball passed packaged CLI and isolated Codex/Claude hook checks plus real Chrome at 1440 × 1000 and 390 × 844: review identity, keyboard decisions, specimen states, draft recovery across service restart, approval, read-only History, manual end, reload, and no horizontal overflow or console warnings/errors. A fresh Blueprint review approved publishing and installing these unchanged bytes. npm registry integrity and SHA-1 match; all 16 files from both a fresh registry install and the global installation are byte-identical to the tested package. After the user explicitly authorized restarting despite four active sessions, the installed service was restarted on the existing port `63810`, preserving the agent capability. Authenticated health, all four active sessions, and the new completion copy were verified. Codex and Claude configuration hashes remained unchanged. Tag `v0.2.2` identifies the tested source, and the GitHub release uses the finalized changelog entry.
+
 The browser shell was also exercised in the in-app browser at wide and narrow widths. Observed behavior:
 
 - the 390-pixel desktop inspector dock resizes the artifact;
@@ -185,7 +187,7 @@ Do not implement these merely because the core exists. The user explicitly ident
 
 ## Recommended next action
 
-Complete the authorized 0.2.2 release from `main`: validate and review the exact tarball, require Windows/Linux × Node 22/24 CI, publish those unchanged bytes, verify registry integrity, install the public package, preserve the existing agent configuration, and verify the restarted local service. Treat npm releases and their Git tags as immutable; stop on any failed gate rather than silently repacking.
+Use published and installed `0.2.2` in real review sessions and let observed friction drive the next focused change. Treat npm releases and Git tags as immutable; any further distributed change requires a new version and the same exact-package validation sequence.
 
 ## Resume checks
 
