@@ -4,11 +4,11 @@ import path from "node:path";
 
 import { getStateRoot } from "./paths.js";
 
-export const AXI_CONTRACT_VERSION = 2;
-export const CLI_DESCRIPTION = "Local, human-gated HTML review for one person and one agent.";
-export const DEFAULT_SESSION_LIMIT = 5;
-export const HOOK_SESSION_LIMIT = 3;
-export const FULL_SESSION_LIMIT = 100;
+const AXI_CONTRACT_VERSION = 2;
+const CLI_DESCRIPTION = "Local, human-gated HTML review for one person and one agent.";
+const DEFAULT_SESSION_LIMIT = 5;
+const HOOK_SESSION_LIMIT = 3;
+const FULL_SESSION_LIMIT = 100;
 
 export class CliError extends Error {
   constructor(code, message, options = {}) {
@@ -50,7 +50,7 @@ export function formatCliError(error) {
   return `${renderFields([["error.code", code], ["error.message", message]])}\n${renderList("help", help)}\n`;
 }
 
-export function collapseHome(input, home = os.homedir()) {
+function collapseHome(input, home = os.homedir()) {
   const resolved = path.resolve(input);
   const resolvedHome = path.resolve(home);
   if (resolved === resolvedHome) return "~";

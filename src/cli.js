@@ -26,7 +26,7 @@ function helpText(command = null) {
   const commandHelp = {
     review: `Usage: blueprint review <artifact.html> [--no-open] [--state-dir <directory>]
 
-Open a self-contained HTML artifact and stay attached until one feedback packet arrives.
+Open a self-contained HTML artifact and stay attached until one review packet arrives.
 The review URL and waiting state go to standard error; standard output remains exact packet JSON.
 This is the default agent workflow after the reviewer asks to launch Blueprint.
 `,
@@ -79,7 +79,7 @@ Usage:
   blueprint server [--state-dir <directory>]
 
 No arguments prints live directory-scoped review state. The first slice accepts
-self-contained HTML only. Feedback delivery is at least once: handle duplicate
+self-contained HTML only. Review-packet delivery is at least once: handle duplicate
 packet IDs idempotently. Run \`blueprint <command> --help\` for focused guidance.
 `;
 }

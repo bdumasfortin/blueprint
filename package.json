@@ -1,6 +1,6 @@
 {
   "name": "blueprint-local-review",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A human-gated, local-first review loop for one person, one agent, and one HTML artifact.",
   "type": "module",
   "bin": {
@@ -9,20 +9,16 @@
   "files": [
     "bin",
     "src",
-    "scripts/build-skill.js",
-    "skills/blueprint",
     "LICENSE",
+    "CHANGELOG.md",
     "README.md"
   ],
   "scripts": {
     "start": "node bin/blueprint.js server",
-    "build:skill": "node scripts/build-skill.js",
-    "check:skill": "node scripts/build-skill.js --check",
     "test": "node --test --test-reporter=spec \"test/*.test.js\"",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=65 --test-coverage-functions=90 --test-reporter=spec \"test/*.test.js\"",
     "check:package": "node scripts/check-package.js",
-    "check": "node --check bin/blueprint.js && npm run check:skill && npm run test:coverage && npm run check:package",
-    "prepack": "npm run check:skill"
+    "check": "node --check bin/blueprint.js && npm run test:coverage && npm run check:package"
   },
   "engines": {
     "node": ">=22"

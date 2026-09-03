@@ -31,6 +31,22 @@ function initialDraft(id = "feedback-1") {
   };
 }
 
+function decisionDraft(id = "response-1-submission-model") {
+  return {
+    id,
+    kind: "decision",
+    body: "Decision response — Choose the submission model\n- Model: Typed content",
+    createdAt: "2026-09-02T12:00:00.000Z",
+    anchor: {
+      type: "element",
+      quote: "Choose the submission model",
+      prefix: "",
+      suffix: "",
+      selector: "#submission-model",
+    },
+  };
+}
+
 test("packets survive restart and redeliver under one ID until acknowledged", async (t) => {
   const { root, artifact } = await createHarness(t);
   const store = new SessionStore(root);
@@ -115,8 +131,9 @@ test("approve is a final acknowledged batch and may contain no comments", async 
   const opened = await store.openArtifact(artifact);
 
   const packet = await store.sendPacket(opened.reviewToken, { intent: "approve" });
-  assert.equal(packet.schemaVersion, 2);
+  assert.equal(packet.schemaVersion, 3);
   assert.equal(packet.intent, "approve");
+  assert.deepEqual(packet.decisions, []);
   assert.deepEqual(packet.comments, []);
 
   const state = await store.getBrowserState(opened.reviewToken);
@@ -138,6 +155,78 @@ test("approve with feedback accepts the history and ends the review", async (t) 
   assert.equal(state.status, "ended");
   assert.equal(state.feedback[0].state, "accepted");
   assert.ok(state.feedback[0].acceptedAt);
+});
+
+test("decision responses are typed separately and cannot request revisions by themselves", async (t) => {
+  const { root, artifact } = await createHarness(t);
+  const store = new SessionStore(root);
+  const opened = await store.openArtifact(artifact);
+  const saved = await store.replaceDrafts(opened.reviewToken, {
+    drafts: [decisionDraft()],
+    packetNote: "",
+  });
+
+  assert.equal(saved.drafts[0].kind, "decision");
+  assert.equal(saved.feedback.length, 0);
+  await assert.rejects(
+    () => store.sendPacket(opened.reviewToken, { intent: "revise" }),
+    /at least one comment/i,
+  );
+
+  const packet = await store.sendPacket(opened.reviewToken, { intent: "approve" });
+  assert.equal(packet.schemaVersion, 3);
+  assert.equal(packet.intent, "approve");
+  assert.equal(packet.decisions.length, 1);
+  assert.equal(packet.decisions[0].kind, "decision");
+  assert.deepEqual(packet.comments, []);
+
+  const state = await store.getBrowserState(opened.reviewToken);
+  assert.equal(state.status, "ended");
+  assert.equal(state.feedback.length, 0);
+  assert.deepEqual(state.packets[0].decisionIds, [packet.decisions[0].id]);
+
+  const history = await store.getReviewHistory(opened.reviewToken);
+  assert.equal(history.schemaVersion, 2);
+  assert.equal(history.cycles[0].kind, "approval");
+  assert.equal(history.cycles[0].decisions[0].body, packet.decisions[0].body);
+  assert.deepEqual(history.cycles[0].comments, []);
+  assert.deepEqual(history.cycles[0].amendments, []);
+});
+
+test("mixed revise packets report comments while keeping decisions as basis inputs", async (t) => {
+  const { root, artifact } = await createHarness(t);
+  const store = new SessionStore(root);
+  const opened = await store.openArtifact(artifact);
+  await store.replaceDrafts(opened.reviewToken, {
+    drafts: [decisionDraft(), initialDraft()],
+    packetNote: "",
+  });
+
+  const packet = await store.sendPacket(opened.reviewToken, { intent: "revise" });
+  assert.equal(packet.decisions.length, 1);
+  assert.equal(packet.comments.length, 1);
+  assert.equal(packet.comments[0].id, "feedback-1");
+
+  await writeFile(artifact, "<!doctype html><h1>A specific revision</h1>");
+  await store.stageArtifact(artifact, {
+    schemaVersion: 2,
+    basisPacketIds: [packet.id],
+    comments: [{
+      commentId: "feedback-1",
+      status: "addressed",
+      before: "First revision",
+      after: "A specific revision",
+      summary: "Made the heading specific.",
+      evidence: "The revised heading names the revision.",
+      selector: "h1",
+    }],
+  });
+  await store.revealStaged(opened.reviewToken);
+
+  const history = await store.getReviewHistory(opened.reviewToken);
+  assert.equal(history.cycles[0].decisions[0].id, packet.decisions[0].id);
+  assert.equal(history.cycles[0].comments[0].id, "feedback-1");
+  assert.equal(history.cycles[0].amendments.length, 1);
 });
 
 test("approval is rejected until a requested revision is revealed", async (t) => {
@@ -217,6 +306,34 @@ test("version-one local sessions migrate drafts and queued packets without losin
   assert.equal((await restarted.nextQueuedPacket(artifact)).intent, "revise");
 });
 
+test("version-two comment packets remain readable after the typed-decision protocol change", async (t) => {
+  const { root, artifact } = await createHarness(t);
+  const store = new SessionStore(root);
+  const opened = await store.openArtifact(artifact);
+  await store.replaceDrafts(opened.reviewToken, { drafts: [initialDraft()], packetNote: "" });
+  const sent = await store.sendPacket(opened.reviewToken, { intent: "revise" });
+
+  const manifestPath = path.join(root, "sessions", opened.sessionId, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const packetPath = path.join(root, "sessions", opened.sessionId, ...manifest.packets[0].path.split("/"));
+  const packet = JSON.parse(await readFile(packetPath, "utf8"));
+  packet.schemaVersion = 2;
+  delete packet.decisions;
+  delete manifest.packets[0].decisionIds;
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFile(packetPath, `${JSON.stringify(packet, null, 2)}\n`);
+
+  const restarted = new SessionStore(root);
+  const delivered = await restarted.nextQueuedPacket(artifact);
+  assert.equal(delivered.schemaVersion, 2);
+  assert.equal(delivered.comments[0].id, sent.comments[0].id);
+  assert.equal("decisions" in delivered, false);
+
+  const history = await restarted.getReviewHistory(opened.reviewToken);
+  assert.deepEqual(history.cycles[0].decisions, []);
+  assert.equal(history.cycles[0].comments[0].id, sent.comments[0].id);
+});
+
 test("staging is invisible until reviewer reveal and reports only known feedback IDs", async (t) => {
   const { root, artifact } = await createHarness(t);
   const store = new SessionStore(root);
@@ -274,7 +391,7 @@ test("review history groups comments and amendments by revealed revision without
   const packet = await store.sendPacket(opened.reviewToken, { intent: "revise" });
 
   let history = await store.getReviewHistory(opened.reviewToken);
-  assert.equal(history.schemaVersion, 1);
+  assert.equal(history.schemaVersion, 2);
   assert.equal(history.cycles[0].kind, "feedback");
   assert.equal(history.cycles[0].state, "queued");
   assert.equal(history.cycles[0].comments[0].body, "Make this heading more specific.");

@@ -44,14 +44,13 @@ Run the complete local contract before handing off a change:
 npm run check
 ```
 
-That command verifies syntax, generated-skill drift, the executable test suite with coverage gates, and the exact npm package allowlist. Current minimum coverage is 90% lines, 65% branches, and 90% functions.
+That command verifies syntax, the executable test suite with coverage gates, and the exact npm package allowlist. Current minimum coverage is 90% lines, 65% branches, and 90% functions.
 
 Focused commands are also available:
 
 ```sh
 npm test
 npm run test:coverage
-npm run check:skill
 npm run check:package
 ```
 
@@ -96,7 +95,6 @@ Runtime state lives outside the repository by default. Use `BLUEPRINT_STATE_DIR`
 - [`../src/`](../src/) — loopback service, durable store, sandbox injection, browser shell, AXI output, and setup behavior.
 - [`../bin/blueprint.js`](../bin/blueprint.js) — executable entry point.
 - [`../test/`](../test/) — protocol, recovery, authority, setup, CLI, and full-cycle checks.
-- [`../skills/blueprint/SKILL.md`](../skills/blueprint/SKILL.md) — generated discovery skill; edit its source in `src/skill.js`, not the generated file.
 - [`../examples/blueprint-evaluation/`](../examples/blueprint-evaluation/) — behavioral and visual specimens used during product evaluation.
 - [`PRODUCT.md`](PRODUCT.md) — durable product decisions and authority history.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — approved implementation contract.
@@ -106,7 +104,9 @@ Runtime state lives outside the repository by default. Use `BLUEPRINT_STATE_DIR`
 
 ## Package and release boundary
 
-The public package is `blueprint-local-review`, licensed MIT. The package allowlist contains only the CLI, runtime source, generated skill, skill builder, README, license, and package metadata; review history, tests, examples, durable docs, and research material stay outside the npm payload.
+The public package is `blueprint-local-review`, licensed MIT. The package allowlist contains only the CLI, runtime source, public changelog, README, license, and package metadata; review history, tests, examples, durable docs, research material, and agent skill files stay outside the npm payload.
+
+Before an npm release, finalize the matching `CHANGELOG.md` entry by replacing **Unreleased** with the publication date. Use that same version entry as the GitHub release description so npm consumers, the repository tag, and the public release page describe one reviewed change set. Then run the complete validation and exact-tarball review; do not silently alter or repack the candidate afterward.
 
 Do not silently repack or republish a released version. Public npm publication, tags, pushes, and changes to a user's active agent installation require their applicable approval gates and exact release verification.
 

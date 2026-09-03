@@ -92,10 +92,13 @@ export function renderReviewShell(reviewToken, nonce) {
     .pane::-webkit-scrollbar-button { display: none; }
     #feedback-pane { display: flex; flex-direction: column; padding-bottom: 84px; }
     .meta-band { margin-bottom: 14px; padding: 11px 12px 11px 15px; border: 1px solid var(--brass); border-left: 4px solid var(--brass); border-radius: 2px; background-color: var(--brass-soft); background-image: repeating-linear-gradient(135deg, transparent 0, transparent 8px, rgba(216, 163, 77, .045) 8px, rgba(216, 163, 77, .045) 9px); color: #e1c590; font-size: 12px; }
+    .draft-section { margin-bottom: 12px; }
+    .draft-section[hidden] { display: none; }
     .draft { display: grid; grid-template-columns: 4px minmax(0, 1fr) 38px; align-items: start; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 2px; background: rgba(14, 21, 29, .93); overflow: hidden; }
     .draft:focus-within { border-color: var(--line-strong); }
     .draft-rail { align-self: stretch; min-height: 44px; background: var(--accent); opacity: .72; }
     .draft:focus-within .draft-rail { opacity: 1; box-shadow: 0 0 12px rgba(67, 229, 221, .35); }
+    .draft.decision .draft-rail { background: var(--ok); }
     .draft-content { min-width: 0; padding: 5px 7px 6px 8px; }
     .draft-top { display: flex; align-items: center; min-height: 13px; margin-bottom: 1px; color: var(--muted); font: 10px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; }
     .anchor { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -112,7 +115,7 @@ export function renderReviewShell(reviewToken, nonce) {
     .draft-delete { align-self: center; width: 32px; height: 32px; margin: 0 5px 0 0; border: 0; background: transparent; color: var(--danger); line-height: 1; }
     .draft-delete:hover { background: transparent; color: #ff8b91; }
     .draft-delete svg { display: block; width: 17px; height: 17px; margin: auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: square; stroke-linejoin: miter; }
-    .packet-note { flex: 0 0 auto; height: 70px; min-height: 70px; margin-top: auto; resize: none; overflow: hidden; }
+    .additional-feedback { flex: 0 0 auto; height: 70px; min-height: 70px; margin-top: auto; resize: none; overflow: hidden; }
     .label { display: block; margin: 17px 0 5px; color: var(--muted); font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .075em; text-transform: uppercase; }
     .sticky-action { position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; padding: 11px 14px 13px; border-top: 1px solid var(--line-strong); background: rgba(8, 12, 17, .96); }
     .sticky-action.has-feedback { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
@@ -190,6 +193,14 @@ export function renderReviewShell(reviewToken, nonce) {
     .ended-dialog h1 { margin: 0 0 9px; font-size: clamp(24px, 5vw, 38px); line-height: 1.08; }
     .ended-dialog h1:focus { outline: none; }
     .ended-dialog p { margin: 0 auto; max-width: 42ch; color: var(--muted); }
+    .ended-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 22px; }
+    .ended-actions button { min-height: 42px; }
+    .ended-close-help { margin-top: 12px !important; color: var(--warn) !important; font-size: 12px; }
+    .readonly-status { display: inline-flex; align-items: center; margin-top: 6px; padding: 2px 6px; border: 1px solid rgba(116, 233, 150, .42); border-radius: 999px; color: var(--ok); font: 700 9px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .075em; text-transform: uppercase; }
+    .readonly-back { min-height: 32px; }
+    .app.read-only .tabs { grid-template-columns: 1fr; }
+    .app.read-only #feedback-tab, .app.read-only .collapse-action, .app.read-only .rail { display: none; }
+    .app.read-only #history-pane { padding-bottom: 14px; }
     @keyframes working-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) {
       .revision-progress.working .revision-progress-dot { animation: none; }
@@ -204,6 +215,9 @@ export function renderReviewShell(reviewToken, nonce) {
       .inspector-closed .inspector { transform: translateY(105%); }
       .sticky-action { right: 0; }
     }
+    @media (max-width: 460px) {
+      .ended-actions { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -217,8 +231,10 @@ export function renderReviewShell(reviewToken, nonce) {
         <div class="inspector-top">
           <div class="inspector-identity">
             <div class="artifact-name" id="artifact-name">Blueprint review</div>
+            <div class="readonly-status" id="readonly-status" hidden>Read only</div>
           </div>
           <div class="inspector-actions">
+            <button class="secondary readonly-back" id="readonly-back" type="button" hidden>Back to completion</button>
             <button class="inspector-action collapse-action" id="collapse-inspector" type="button" title="Collapse inspector" aria-label="Collapse inspector">›</button>
           </div>
         </div>
@@ -234,15 +250,22 @@ export function renderReviewShell(reviewToken, nonce) {
           <span class="revision-progress-dot" aria-hidden="true"></span>
           <div><div class="revision-progress-title" id="revision-progress-title"></div><div class="revision-progress-detail" id="revision-progress-detail"></div></div>
         </section>
-        <div id="draft-list"></div>
+        <section class="draft-section" id="decision-drafts" aria-labelledby="decision-drafts-title" hidden>
+          <div class="pane-section-head"><span id="decision-drafts-title">Decision responses</span><span id="decision-draft-count">0</span></div>
+          <div id="decision-draft-list"></div>
+        </section>
+        <section class="draft-section" id="feedback-drafts" aria-labelledby="feedback-drafts-title" hidden>
+          <div class="pane-section-head"><span id="feedback-drafts-title">Private feedback</span><span id="feedback-draft-count">0</span></div>
+          <div id="draft-list"></div>
+        </section>
         <section class="review-items" id="review-items" aria-labelledby="review-items-title" hidden>
           <div class="pane-section-head"><span id="review-items-title">Submitted feedback</span><span id="review-item-count">0</span></div>
           <div id="feedback-list"></div>
         </section>
-        <textarea class="packet-note" id="packet-note" aria-label="Additional feedback" aria-keyshortcuts="Enter" placeholder="Additional feedback"></textarea>
+        <textarea class="additional-feedback" id="additional-feedback" aria-label="Additional feedback" aria-keyshortcuts="Enter" placeholder="Additional feedback"></textarea>
       </section>
       <section class="pane" id="history-pane" hidden>
-        <div class="history-intro">Read-only history of revealed revisions, submitted comments, and reported amendments.</div>
+        <div class="history-intro">Read-only history of revealed revisions, decision responses, submitted comments, and reported amendments.</div>
         <div id="history-list"></div>
       </section>
       <div class="sticky-action" id="send-area">
@@ -267,6 +290,11 @@ export function renderReviewShell(reviewToken, nonce) {
       <div class="ended-kicker">Blueprint review</div>
       <h1 id="ended-title" tabindex="-1">Review closed</h1>
       <p id="ended-message">This review session has ended. Return to your agent to continue.</p>
+      <div class="ended-actions" id="ended-actions" hidden>
+        <button class="primary" id="close-review-tab" type="button">Close tab</button>
+        <button class="secondary" id="view-approved-review" type="button">View approved review</button>
+      </div>
+      <p class="ended-close-help" id="ended-close-help" role="status" aria-live="polite" hidden>Your browser kept this tab open. You can close it manually.</p>
     </div>
   </section>
   <div class="toast-overlay" id="toast-overlay" hidden><div class="toast" id="toast" role="status" aria-live="polite"></div></div>
@@ -283,7 +311,7 @@ export function renderReviewShell(reviewToken, nonce) {
     const sendArea = document.getElementById("send-area");
     const feedbackTab = document.getElementById("feedback-tab");
     const historyTab = document.getElementById("history-tab");
-    const noteField = document.getElementById("packet-note");
+    const additionalFeedbackField = document.getElementById("additional-feedback");
     const approveButton = document.getElementById("approve-review");
     const reviseButton = document.getElementById("revise-review");
     const revisionCurtain = document.getElementById("revision-curtain");
@@ -291,6 +319,12 @@ export function renderReviewShell(reviewToken, nonce) {
     const endedCurtain = document.getElementById("ended-curtain");
     const endedTitle = document.getElementById("ended-title");
     const endedMessage = document.getElementById("ended-message");
+    const endedActions = document.getElementById("ended-actions");
+    const endedCloseHelp = document.getElementById("ended-close-help");
+    const closeReviewTabButton = document.getElementById("close-review-tab");
+    const viewApprovedReviewButton = document.getElementById("view-approved-review");
+    const readonlyStatus = document.getElementById("readonly-status");
+    const readonlyBackButton = document.getElementById("readonly-back");
     const toastOverlay = document.getElementById("toast-overlay");
     const toastElement = document.getElementById("toast");
     let state;
@@ -307,6 +341,7 @@ export function renderReviewShell(reviewToken, nonce) {
     let toastHideTimer;
     let pollTimer;
     let reviewRetired = false;
+    let readOnlyViewer = false;
     let focusedCurtainRevisionId = null;
     let lastAnnotation = "";
     let lastAnnotationAt = 0;
@@ -326,23 +361,67 @@ export function renderReviewShell(reviewToken, nonce) {
       }, 2800);
     }
 
-    function retireReview(title = "Review closed", message = "This review session has ended. Return to your agent to continue.") {
+    function isApprovedReview() {
+      return state?.status === "ended" && state.latestPacket?.intent === "approve";
+    }
+
+    function retireReview(title = "Review closed", message = "This review session has ended. Return to your agent to continue.", approved = false) {
       endedTitle.textContent = title;
       endedMessage.textContent = message;
+      endedActions.hidden = !approved;
+      endedCloseHelp.hidden = true;
       endedCurtain.hidden = false;
-      if (reviewRetired) return;
-      postAnnotationModifier(false);
-      reviewRetired = true;
-      clearInterval(pollTimer);
-      clearTimeout(saveTimer);
-      clearTimeout(toastTimer);
-      clearTimeout(toastHideTimer);
-      toastOverlay.hidden = true;
-      revisionCurtain.hidden = true;
+      if (!reviewRetired) {
+        postAnnotationModifier(false);
+        reviewRetired = true;
+        clearInterval(pollTimer);
+        clearTimeout(saveTimer);
+        clearTimeout(toastTimer);
+        clearTimeout(toastHideTimer);
+        toastOverlay.hidden = true;
+        revisionCurtain.hidden = true;
+      }
+      readOnlyViewer = false;
+      app.classList.remove("read-only", "inspector-closed");
       app.inert = true;
       app.hidden = true;
       frame.src = "about:blank";
+      delete frame.dataset.revision;
       requestAnimationFrame(() => endedTitle.focus());
+    }
+
+    function showApprovedCompletion() {
+      retireReview(
+        "Review approved",
+        "Your final review submission is queued for the agent. This review is now read-only.",
+        true,
+      );
+    }
+
+    function openApprovedReview() {
+      if (!isApprovedReview() || !state.visibleRevision) return;
+      readOnlyViewer = true;
+      endedCurtain.hidden = true;
+      app.hidden = false;
+      app.inert = false;
+      app.classList.remove("inspector-closed");
+      app.classList.add("read-only");
+      readonlyStatus.hidden = false;
+      readonlyBackButton.hidden = false;
+      activePane = "history";
+      frame.src = revisionUrl(state.visibleRevision, true);
+      frame.dataset.revision = state.visibleRevision.id;
+      renderHistory();
+      setPane("history");
+      requestAnimationFrame(() => readonlyBackButton.focus());
+    }
+
+    function closeReviewTab() {
+      window.close();
+      setTimeout(() => {
+        if (window.closed) return;
+        endedCloseHelp.hidden = false;
+      }, 150);
     }
 
     async function api(path, options = {}) {
@@ -355,9 +434,10 @@ export function renderReviewShell(reviewToken, nonce) {
       return payload;
     }
 
-    function revisionUrl(revision) {
-      return "/artifact/" + encodeURIComponent(state.artifactToken)
+    function revisionUrl(revision, readOnly = false) {
+      const url = "/artifact/" + encodeURIComponent(state.artifactToken)
         + "/revision/" + encodeURIComponent(revision.id);
+      return readOnly ? url + "?mode=readonly" : url;
     }
 
     function postAnnotationModifier(active) {
@@ -406,6 +486,7 @@ export function renderReviewShell(reviewToken, nonce) {
     }
 
     function setPane(next) {
+      if (readOnlyViewer) next = "history";
       activePane = next;
       const feedbackActive = next === "feedback";
       feedbackPane.hidden = !feedbackActive;
@@ -415,6 +496,11 @@ export function renderReviewShell(reviewToken, nonce) {
       historyTab.classList.toggle("active", !feedbackActive);
       if (feedbackActive) requestAnimationFrame(sizeFeedbackEditors);
       else if (!historyLoading && historyUpdatedAt !== state?.updatedAt) void loadHistory();
+    }
+
+    function invalidateHistory() {
+      reviewHistory = undefined;
+      historyUpdatedAt = null;
     }
 
     function isPlainEnter(event) {
@@ -429,7 +515,7 @@ export function renderReviewShell(reviewToken, nonce) {
     }
 
     function queueAdditionalFeedback() {
-      const body = noteField.value.trim();
+      const body = additionalFeedbackField.value.trim();
       if (!body || !state || state.status !== "active") return false;
       state.drafts.push({
         id: "feedback-" + crypto.randomUUID(),
@@ -446,10 +532,10 @@ export function renderReviewShell(reviewToken, nonce) {
         },
       });
       state.packetNote = "";
-      noteField.value = "";
-      sizePacketNote();
+      additionalFeedbackField.value = "";
+      sizeAdditionalFeedback();
       changed(true);
-      requestAnimationFrame(() => noteField.focus({ preventScroll: true }));
+      requestAnimationFrame(() => additionalFeedbackField.focus({ preventScroll: true }));
       return true;
     }
 
@@ -461,9 +547,14 @@ export function renderReviewShell(reviewToken, nonce) {
 
     function artifactResponseDraftId(responseId) {
       const base = "response-" + state.visibleRevision.sequence + "-" + responseId;
-      const existing = state.drafts.find((draft) => draft.id === base || draft.id.startsWith(base + ":"));
+      const existing = state.drafts.find((draft) =>
+        draft.kind === "decision" && (draft.id === base || draft.id.startsWith(base + ":")));
       if (existing) return existing.id;
-      if (!state.feedback.some((feedback) => feedback.id === base)) return base;
+      const alreadySubmitted = state.feedback.some((feedback) =>
+        feedback.id === base || feedback.id.startsWith(base + ":"))
+        || state.packets.some((packet) =>
+          (packet.decisionIds ?? []).some((id) => id === base || id.startsWith(base + ":")));
+      if (!alreadySubmitted) return base;
       return base + ":" + crypto.randomUUID().slice(0, 8);
     }
 
@@ -479,7 +570,7 @@ export function renderReviewShell(reviewToken, nonce) {
       const existing = existingIndex >= 0 ? state.drafts[existingIndex] : null;
       const draft = {
         id,
-        kind: "initial",
+        kind: "decision",
         body,
         createdAt: existing?.createdAt ?? new Date().toISOString(),
         sourceRevisionId: state.visibleRevision.id,
@@ -491,29 +582,30 @@ export function renderReviewShell(reviewToken, nonce) {
       app.classList.remove("inspector-closed");
       changed(true);
       void saveDrafts();
-      toast(existing ? "Queued response updated in Feedback." : "Response queued in Feedback.");
+      toast(existing ? "Queued decision response updated." : "Decision response queued.");
     }
 
     function updateSubmissionActions() {
       const draftsValid = state.drafts.every((draft) => draft.body.trim());
-      const hasContent = state.drafts.length > 0 || noteField.value.trim();
+      const hasFeedback = state.drafts.some((draft) => draft.kind !== "decision") || !!additionalFeedbackField.value.trim();
       const active = !sending && state.status === "active" && !!state.visibleRevision;
       const approvalBlocked = pendingRevisionRequest().packets.length > 0 || !!state.stagedRevision;
-      sendArea.classList.toggle("has-feedback", !!hasContent);
-      approveButton.textContent = hasContent ? "Approve with feedback" : "Approve";
+      sendArea.classList.toggle("has-feedback", hasFeedback);
+      approveButton.textContent = hasFeedback ? "Approve with feedback" : "Approve";
       approveButton.disabled = !active || !draftsValid || approvalBlocked;
       approveButton.title = approvalBlocked
         ? "Approval is unavailable until the requested revision is revealed."
         : "";
       if (approvalBlocked) approveButton.setAttribute("aria-describedby", "revision-progress-detail");
       else approveButton.removeAttribute("aria-describedby");
-      reviseButton.hidden = !hasContent;
-      reviseButton.disabled = !active || !draftsValid;
+      reviseButton.hidden = !hasFeedback;
+      reviseButton.disabled = !active || !draftsValid || !hasFeedback;
     }
 
     function updateFeedbackCount() {
       const reviewItemCount = state.feedback.filter((feedback) => feedback.state !== "accepted").length;
-      document.getElementById("feedback-count").textContent = state.drafts.length + reviewItemCount;
+      const draftCount = state.drafts.filter((draft) => draft.kind !== "decision").length;
+      document.getElementById("feedback-count").textContent = draftCount + reviewItemCount;
     }
 
     function sizeDraftEditor(textarea) {
@@ -525,26 +617,37 @@ export function renderReviewShell(reviewToken, nonce) {
       document.querySelectorAll(".draft textarea").forEach(sizeDraftEditor);
     }
 
-    function sizePacketNote() {
-      noteField.style.height = "0px";
-      noteField.style.height = Math.max(70, noteField.scrollHeight) + "px";
+    function sizeAdditionalFeedback() {
+      additionalFeedbackField.style.height = "0px";
+      additionalFeedbackField.style.height = Math.max(70, additionalFeedbackField.scrollHeight) + "px";
     }
 
     function sizeFeedbackEditors() {
       sizeDraftEditors();
-      sizePacketNote();
+      sizeAdditionalFeedback();
     }
 
     function renderDrafts() {
-      const list = document.getElementById("draft-list");
       const activeEditor = document.activeElement?.dataset?.draftId ? document.activeElement : null;
       const activeDraftId = activeEditor?.dataset.draftId;
       const selectionStart = activeEditor?.selectionStart;
       const selectionEnd = activeEditor?.selectionEnd;
-      list.replaceChildren();
-      state.drafts.forEach((draft, index) => {
+      const decisionDrafts = state.drafts.filter((draft) => draft.kind === "decision");
+      const feedbackDrafts = state.drafts.filter((draft) => draft.kind !== "decision");
+      const decisionSection = document.getElementById("decision-drafts");
+      const feedbackSection = document.getElementById("feedback-drafts");
+      const decisionList = document.getElementById("decision-draft-list");
+      const feedbackList = document.getElementById("draft-list");
+      decisionSection.hidden = decisionDrafts.length === 0;
+      feedbackSection.hidden = feedbackDrafts.length === 0;
+      document.getElementById("decision-draft-count").textContent = decisionDrafts.length;
+      document.getElementById("feedback-draft-count").textContent = feedbackDrafts.length;
+      decisionList.replaceChildren();
+      feedbackList.replaceChildren();
+
+      function renderDraft(draft, list) {
         const card = document.createElement("article");
-        card.className = "draft";
+        card.className = "draft" + (draft.kind === "decision" ? " decision" : "");
         const rail = document.createElement("span");
         rail.className = "draft-rail";
         rail.setAttribute("aria-hidden", "true");
@@ -552,19 +655,27 @@ export function renderReviewShell(reviewToken, nonce) {
         content.className = "draft-content";
         const top = document.createElement("div");
         top.className = "draft-top";
-        const anchorLabel = draft.kind === "reopen"
+        const anchorLabel = draft.kind === "decision"
+          ? "Decision · " + draft.anchor.quote
+          : draft.kind === "reopen"
           ? "Reopen · " + draft.anchor.quote
           : draft.anchor.type === "general"
             ? "General feedback"
             : draft.anchor.quote || draft.anchor.selector || "Element";
         const anchor = navigationAnchor(anchorLabel, draft.anchor.selector);
-        const remove = iconButton("", "Delete draft", () => { state.drafts.splice(index, 1); changed(true); });
+        const remove = iconButton("", draft.kind === "decision" ? "Delete decision response" : "Delete draft", () => {
+          const index = state.drafts.findIndex((item) => item.id === draft.id);
+          if (index >= 0) state.drafts.splice(index, 1);
+          changed(true);
+        });
         remove.classList.add("draft-delete");
         remove.append(trashIcon());
         top.append(anchor);
         const textarea = document.createElement("textarea");
         textarea.value = draft.body;
-        textarea.placeholder = draft.kind === "reopen" ? "What still needs to change?" : "Write a private draft comment";
+        textarea.placeholder = draft.kind === "decision"
+          ? "Edit the queued decision response"
+          : draft.kind === "reopen" ? "What still needs to change?" : "Write a private draft comment";
         textarea.rows = 1;
         textarea.dataset.draftId = draft.id;
         textarea.setAttribute("aria-keyshortcuts", "Enter");
@@ -573,7 +684,10 @@ export function renderReviewShell(reviewToken, nonce) {
         content.append(top, textarea);
         card.append(rail, content, remove);
         list.append(card);
-      });
+      }
+
+      decisionDrafts.forEach((draft) => renderDraft(draft, decisionList));
+      feedbackDrafts.forEach((draft) => renderDraft(draft, feedbackList));
       updateFeedbackCount();
       updateSubmissionActions();
       requestAnimationFrame(sizeDraftEditors);
@@ -839,7 +953,7 @@ export function renderReviewShell(reviewToken, nonce) {
       if (!reviewHistory?.cycles.length) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "History will appear as comments and revisions are recorded.";
+        empty.textContent = "History will appear as decisions, comments, and revisions are recorded.";
         list.append(empty);
         return;
       }
@@ -858,6 +972,9 @@ export function renderReviewShell(reviewToken, nonce) {
         card.append(head);
 
         if (cycle.kind === "initial") appendHistoryEvent(card, "Snapshot", "Initial artifact displayed.");
+        (cycle.decisions ?? []).forEach((decision) => {
+          appendHistoryEvent(card, "Decision", decision.body);
+        });
         cycle.comments.forEach((comment) => {
           appendHistoryEvent(card, comment.kind === "reopen" ? "Reopen" : "Comment", comment.body);
         });
@@ -884,39 +1001,80 @@ export function renderReviewShell(reviewToken, nonce) {
           content.append(status);
           appendHistoryEvent(card, amendment.status, content);
         });
-        if (cycle.kind !== "initial" && cycle.comments.length === 0 && cycle.amendments.length === 0) {
+        if (cycle.kind !== "initial" && (cycle.decisions ?? []).length === 0
+          && cycle.comments.length === 0 && cycle.amendments.length === 0) {
           appendHistoryEvent(card, "Snapshot", "Revision recorded without linked feedback evidence.");
         }
         list.append(card);
       });
     }
 
+    function captureFeedbackScroll() {
+      if (feedbackPane.hidden) return null;
+      const maxScroll = Math.max(0, feedbackPane.scrollHeight - feedbackPane.clientHeight);
+      return {
+        scrollTop: feedbackPane.scrollTop,
+        distanceFromBottom: maxScroll - feedbackPane.scrollTop,
+        nearBottom: maxScroll - feedbackPane.scrollTop < 8,
+        additionalFeedbackFocused: document.activeElement === additionalFeedbackField,
+        selectionStart: additionalFeedbackField.selectionStart,
+        selectionEnd: additionalFeedbackField.selectionEnd,
+      };
+    }
+
+    function restoreFeedbackScroll(snapshot) {
+      if (!snapshot) return;
+      requestAnimationFrame(() => {
+        const maxScroll = Math.max(0, feedbackPane.scrollHeight - feedbackPane.clientHeight);
+        feedbackPane.scrollTop = snapshot.additionalFeedbackFocused || snapshot.nearBottom
+          ? Math.max(0, maxScroll - snapshot.distanceFromBottom)
+          : Math.min(snapshot.scrollTop, maxScroll);
+        if (!snapshot.additionalFeedbackFocused) return;
+        additionalFeedbackField.focus({ preventScroll: true });
+        if (Number.isInteger(snapshot.selectionStart) && Number.isInteger(snapshot.selectionEnd)) {
+          additionalFeedbackField.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd);
+        }
+      });
+    }
+
+    function renderRecoveryState() {
+      const queued = state?.packets.find((packet) => packet.status === "queued");
+      const trouble = disconnected || (queued && Date.now() - Date.parse(queued.createdAt) > 15000);
+      document.getElementById("recovery-banner").hidden = !trouble;
+    }
+
     function render() {
+      const feedbackScroll = captureFeedbackScroll();
       document.getElementById("artifact-name").textContent = state.artifactName;
       if (state.status === "ended") {
-        retireReview();
+        if (isApprovedReview()) showApprovedCompletion();
+        else retireReview();
         return;
       }
       if (state.visibleRevision && !frame.dataset.revision) {
         frame.src = revisionUrl(state.visibleRevision);
         frame.dataset.revision = state.visibleRevision.id;
       }
-      noteField.value = state.packetNote;
+      additionalFeedbackField.value = state.packetNote;
       renderDrafts();
       renderRevisionProgress();
       renderReviewItems();
       renderHistory();
       setPane(activePane);
-      const queued = state.packets.find((packet) => packet.status === "queued");
-      const trouble = disconnected || (queued && Date.now() - Date.parse(queued.createdAt) > 15000);
-      document.getElementById("recovery-banner").hidden = !trouble;
+      renderRecoveryState();
       const stagedRevisionId = state.stagedRevision?.id ?? null;
       revisionCurtain.hidden = !stagedRevisionId;
       app.inert = !!stagedRevisionId;
       if (stagedRevisionId) {
-        const count = state.drafts.length + (noteField.value.trim() ? 1 : 0);
-        document.getElementById("revision-message").textContent = count
-          ? "Your " + count + " unsent " + (count === 1 ? "comment is" : "comments are") + " preserved. Reveal the revision to inspect what changed."
+        const decisionCount = state.drafts.filter((draft) => draft.kind === "decision").length;
+        const feedbackCount = state.drafts.filter((draft) => draft.kind !== "decision").length
+          + (additionalFeedbackField.value.trim() ? 1 : 0);
+        const preserved = [];
+        if (decisionCount) preserved.push(decisionCount + " decision " + (decisionCount === 1 ? "response" : "responses"));
+        if (feedbackCount) preserved.push(feedbackCount + " " + (feedbackCount === 1 ? "comment" : "comments"));
+        const preservedCount = decisionCount + feedbackCount;
+        document.getElementById("revision-message").textContent = preserved.length
+          ? "Your unsent " + preserved.join(" and ") + (preservedCount === 1 ? " is" : " are") + " preserved. Reveal the revision to inspect what changed."
           : "Reveal the revision to inspect the changes linked to your feedback.";
         if (focusedCurtainRevisionId !== stagedRevisionId) {
           focusedCurtainRevisionId = stagedRevisionId;
@@ -926,6 +1084,7 @@ export function renderReviewShell(reviewToken, nonce) {
         focusedCurtainRevisionId = null;
       }
       postChangeMap();
+      restoreFeedbackScroll(feedbackScroll);
     }
 
     function changed(rerender = false) {
@@ -939,7 +1098,7 @@ export function renderReviewShell(reviewToken, nonce) {
     async function saveDrafts() {
       clearTimeout(saveTimer);
       saveTimer = null;
-      const payload = { drafts: state.drafts, packetNote: noteField.value };
+      const payload = { drafts: state.drafts, packetNote: additionalFeedbackField.value };
       saving = api("/drafts", { method: "PUT", body: JSON.stringify(payload) });
       try {
         await saving;
@@ -950,7 +1109,8 @@ export function renderReviewShell(reviewToken, nonce) {
         toast(error.message + " Your drafts remain in this page.", true);
       } finally {
         saving = null;
-        render();
+        renderRecoveryState();
+        updateSubmissionActions();
       }
     }
 
@@ -964,9 +1124,13 @@ export function renderReviewShell(reviewToken, nonce) {
       if (dirty || saving) return;
       try {
         const nextState = await api("/state");
+        if (state?.updatedAt === nextState.updatedAt) {
+          disconnected = false;
+          renderRecoveryState();
+          return;
+        }
         if (state?.updatedAt && state.updatedAt !== nextState.updatedAt) {
-          reviewHistory = undefined;
-          historyUpdatedAt = null;
+          invalidateHistory();
         }
         state = nextState;
         disconnected = false;
@@ -974,7 +1138,7 @@ export function renderReviewShell(reviewToken, nonce) {
       } catch (error) {
         disconnected = true;
         if (!quiet) toast(error.message, true);
-        if (state) render();
+        if (state) renderRecoveryState();
       }
     }
 
@@ -999,15 +1163,14 @@ export function renderReviewShell(reviewToken, nonce) {
         const revision = state.visibleRevision;
         frame.src = revisionUrl(revision) + "?revealed=" + Date.now();
         frame.dataset.revision = revision.id;
-        reviewHistory = undefined;
-        historyUpdatedAt = null;
+        invalidateHistory();
         activePane = "feedback";
         render();
         toast("Latest revision revealed. Amended elements are marked in the artifact.");
       } catch (error) { toast(error.message, true); }
     }
 
-    async function submitFeedback(intent) {
+    async function submitReview(intent) {
       if (sending) return;
       const sendButton = intent === "approve" ? approveButton : reviseButton;
       if (sendButton.disabled || sendButton.hidden) return;
@@ -1019,10 +1182,11 @@ export function renderReviewShell(reviewToken, nonce) {
       reviseButton.disabled = true;
       try {
         await flushDrafts();
-        await api("/send", { method: "POST", body: JSON.stringify({ intent }) });
+        const packet = await api("/send", { method: "POST", body: JSON.stringify({ intent }) });
         if (finalApproval) {
           state.status = "ended";
-          retireReview("Review approved", "The review session is closed. Your final feedback is queued for the agent.");
+          state.latestPacket = packet;
+          showApprovedCompletion();
         } else {
           await loadState();
           toast("Revision requested. Your sent feedback will stay visible while the agent works.", false, true);
@@ -1039,8 +1203,7 @@ export function renderReviewShell(reviewToken, nonce) {
     async function acceptFeedback(id) {
       try {
         state = await api("/feedback/" + encodeURIComponent(id) + "/accept", { method: "POST", body: "{}" });
-        reviewHistory = undefined;
-        historyUpdatedAt = null;
+        invalidateHistory();
         render();
       } catch (error) { toast(error.message, true); }
     }
@@ -1052,8 +1215,7 @@ export function renderReviewShell(reviewToken, nonce) {
           method: "POST", body: JSON.stringify({ note }),
         });
         reopenEditingId = null;
-        reviewHistory = undefined;
-        historyUpdatedAt = null;
+        invalidateHistory();
         activePane = "feedback";
         render();
         toast("Reopen note saved as a private draft.");
@@ -1061,7 +1223,7 @@ export function renderReviewShell(reviewToken, nonce) {
     }
 
     async function copyLatestPacket() {
-      if (!state?.latestPacket) { toast("No sent feedback to copy yet."); return; }
+      if (!state?.latestPacket) { toast("No sent review submission to copy yet."); return; }
       const text = JSON.stringify(state.latestPacket, null, 2);
       try {
         await navigator.clipboard.writeText(text);
@@ -1073,19 +1235,26 @@ export function renderReviewShell(reviewToken, nonce) {
         document.execCommand("copy");
         field.remove();
       }
-      toast("Feedback copied.");
+      toast("Review submission copied.");
     }
 
-    noteField.addEventListener("input", () => { sizePacketNote(); state.packetNote = noteField.value; changed(); });
-    noteField.addEventListener("keydown", queueAdditionalFeedbackOnEnter);
-    frame.addEventListener("load", postChangeMap);
+    additionalFeedbackField.addEventListener("input", () => {
+      sizeAdditionalFeedback();
+      state.packetNote = additionalFeedbackField.value;
+      changed();
+    });
+    additionalFeedbackField.addEventListener("keydown", queueAdditionalFeedbackOnEnter);
+    frame.addEventListener("load", () => { if (!readOnlyViewer) postChangeMap(); });
     feedbackTab.addEventListener("click", () => setPane("feedback"));
     historyTab.addEventListener("click", () => setPane("history"));
     document.getElementById("collapse-inspector").addEventListener("click", () => app.classList.add("inspector-closed"));
     document.getElementById("expand-inspector").addEventListener("click", () => app.classList.remove("inspector-closed"));
     revealButton.addEventListener("click", reveal);
-    approveButton.addEventListener("click", () => submitFeedback("approve"));
-    reviseButton.addEventListener("click", () => submitFeedback("revise"));
+    closeReviewTabButton.addEventListener("click", closeReviewTab);
+    viewApprovedReviewButton.addEventListener("click", openApprovedReview);
+    readonlyBackButton.addEventListener("click", showApprovedCompletion);
+    approveButton.addEventListener("click", () => submitReview("approve"));
+    reviseButton.addEventListener("click", () => submitReview("revise"));
     document.getElementById("copy-recovery").addEventListener("click", copyLatestPacket);
     window.addEventListener("keydown", (event) => {
       if (event.key === "Alt") postAnnotationModifier(true);

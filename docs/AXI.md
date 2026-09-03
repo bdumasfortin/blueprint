@@ -1,8 +1,8 @@
 # Blueprint AXI contract
 
-Status: direction and first local implementation slice approved on 2026-08-29; atomic review launch-and-wait, this computer's Codex integration update, the `blueprint-local-review` public identity, MIT licensing, and a validation-gated npm publication path approved on 2026-08-30. Modifications to other agent installations remain separate authority gates.
+Status: direction and first local implementation slice approved on 2026-08-29; atomic review launch-and-wait, this computer's Codex integration update, the `blueprint-local-review` public identity, MIT licensing, and a validation-gated npm publication path approved on 2026-08-30; typed decision-response packet semantics, same-tab post-approval read-only viewing, and removal of the generated agent skill approved on 2026-09-02. Modifications to other agent installations remain separate authority gates.
 
-Blueprint is formally an **Agent eXperience Interface (AXI)**: its command-line output is a product interface for capable agents, while the browser remains the human review surface. The AXI layer does not weaken Blueprint's product invariants. One human, one agent, one authoritative HTML artifact, revision-scoped private drafts, intent-bearing acknowledged feedback, reviewer-controlled revision reveal, a unified Feedback action surface, and read-only revision-cycle History remain the governing contract.
+Blueprint is formally an **Agent eXperience Interface (AXI)**: its command-line output is a product interface for capable agents, while the browser remains the human review surface. The AXI layer does not weaken Blueprint's product invariants. One human, one agent, one authoritative HTML artifact, revision-scoped private decisions and comments, intent-bearing acknowledged review submissions, reviewer-controlled revision reveal, a unified action surface with typed content, and read-only revision-cycle History remain the governing contract.
 
 ## Distribution direction
 
@@ -10,8 +10,7 @@ The approved target is:
 
 1. A globally installed npm package provides the durable local CLI and loopback review runtime.
 2. `blueprint setup hooks` explicitly installs or repairs compact SessionStart context for Codex and Claude Code.
-3. The npm package ships a generated, on-demand `blueprint` skill that points agents back to the current CLI guidance.
-4. An `npx` path may later provide zero-setup evaluation, but persistent local sessions make a global installation the preferred repeated-use model.
+3. An `npx` path may later provide zero-setup evaluation, but persistent local sessions make a global installation the preferred repeated-use model.
 
 The public package is named `blueprint-local-review` and licensed MIT. Version 0.2.0 is the first public release. Publication requires the enforced coverage and package-boundary checks, isolated tarball installation, browser and recovery evidence, and an exact final review of the artifact to be published. The registry copy must match the reviewed tarball's integrity and checksum.
 
@@ -40,7 +39,6 @@ Blueprint applies the ten principles described at [axi.md](https://axi.md/) with
 - `blueprint review` is the default launch: it opens the artifact and keeps the same process attached until one intent-bearing feedback packet is printed and acknowledged.
 - `blueprint open` and `wait` preserve the same durable protocol as separate lower-level recovery and diagnostic commands; `stage` owns revision preparation.
 - `blueprint setup hooks|status|remove` owns optional agent integration.
-- `skills/blueprint/SKILL.md` is generated discovery metadata, not a second copy of the CLI manual.
 
 The versioned playbooks are:
 
@@ -52,12 +50,12 @@ AXI contract version 2 removes the procedural seam between initial launch and th
 
 ## Intent-bearing review contract
 
-Packet schema version 2 gives the agent an explicit `intent`:
+Packet schema version 3 gives the agent an explicit `intent` and separate `decisions` and `comments` collections. Packet schemas 1 and 2 remain readable:
 
-- `approve` is final, may contain zero or more comments, and means the session has ended. The agent may honor attached final comments but must not stage another revision for that ended review.
-- `revise` always contains feedback and keeps the review active. The agent should keep exactly one wait attached while editing so later revise batches can be folded into the same prepared revision.
+- `approve` is final, may contain zero or more decisions and comments, and means the session has ended. A decision-only approval remains labelled **Approve** in the reviewer shell. The completion screen may project the approved snapshot and History back into the same tab as read-only, but that never reactivates the review or creates another feedback opportunity. The agent may honor attached final content but must not stage another revision for that ended review.
+- `revise` always contains at least one revision comment, may also carry decisions as typed basis inputs, and keeps the review active. A decision by itself cannot create a revise packet. The agent should keep exactly one wait attached while editing so later revise batches can be folded into the same prepared revision.
 
-The report passed to `blueprint stage` uses schema version 2 and lists every handled revise packet in `basisPacketIds`. Each addressed or changed comment reports `before`, `after`, `summary`, `evidence`, and the selector of the amended element. This evidence drives both the inspector and the non-authoritative runtime change markers injected into the revealed snapshot.
+The report passed to `blueprint stage` uses schema version 2 and lists every handled revise packet in `basisPacketIds`. Each addressed or changed comment reports `before`, `after`, `summary`, `evidence`, and the selector of the amended element. Decisions are recorded in History as basis inputs and are not report comments, amendment markers, or Accept/Reopen items. This evidence drives both the inspector and the non-authoritative runtime change markers injected into the revealed snapshot.
 
 ## Hook installation contract
 
@@ -82,7 +80,7 @@ The hook invokes `blueprint hook context --agent <agent>`. Its JSON output conta
 
 ## Package boundary
 
-The npm tarball contains only the executable, runtime source, skill generator, generated Blueprint skill, README, license, and package metadata. It has no runtime dependencies and retains the Node.js 22 minimum. The current slice does not add:
+The npm tarball contains only the executable, runtime source, public changelog, README, license, and package metadata. It has no runtime dependencies and retains the Node.js 22 minimum. The current slice does not add:
 
 - a marketplace listing or plugin bundle;
 - desktop packaging, installers, updates, or auto-start;
@@ -94,4 +92,6 @@ Those remain separate decisions and authority gates.
 
 ## Public-release evidence gate
 
-Version 0.2.0 enforces at least 90% line, 65% branch, and 90% function coverage through Node's built-in test runner. The package contract independently dry-runs `npm pack`, requires the CLI, runtime, generated skill, README, and MIT license, and rejects any unexpected path. The exact tarball installed into a fresh prefix, completed the isolated Codex and Claude hook lifecycle, ran on the declared Node 22 minimum, passed a real-browser wide/narrow and service-restart cycle, and passed `npm publish --dry-run` before publication. Windows/Linux × Node 22/24 CI then passed, the exact tarball was published, and its public registry integrity and checksum were verified before local installation and source tagging.
+Version 0.2.0 enforced at least 90% line, 65% branch, and 90% function coverage through Node's built-in test runner. Its exact tarball installed into a fresh prefix, completed the isolated Codex and Claude hook lifecycle, ran on the declared Node 22 minimum, passed a real-browser wide/narrow and service-restart cycle, and passed `npm publish --dry-run` before publication. Windows/Linux × Node 22/24 CI then passed, the exact tarball was published, and its public registry integrity and checksum were verified before local installation and source tagging.
+
+Beginning with 0.2.1, the package contract independently dry-runs `npm pack`, requires the CLI, runtime, public changelog, README, and MIT license, and rejects any unexpected path. It no longer ships or validates a generated agent skill. The changelog entry for a release supplies the matching GitHub release description.

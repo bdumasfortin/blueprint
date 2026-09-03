@@ -164,7 +164,10 @@ export async function startBlueprintServer(options = {}) {
 
       if (request.method === "GET" && parts[0] === "artifact" && parts[2] === "revision" && parts.length === 4) {
         const artifact = await store.readRevision(parts[1], parts[3]);
-        return sendHtml(response, 200, injectAnnotationSdk(artifact.contents), {
+        const contents = url.searchParams.get("mode") === "readonly"
+          ? artifact.contents
+          : injectAnnotationSdk(artifact.contents);
+        return sendHtml(response, 200, contents, {
           "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
         });
       }

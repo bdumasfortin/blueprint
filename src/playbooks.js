@@ -1,8 +1,8 @@
 import { CliError, renderFields, renderList, renderTable } from "./axi.js";
 
-export const PLAYBOOK_VERSION = 7;
+const PLAYBOOK_VERSION = 9;
 
-export const PLAYBOOKS = Object.freeze([
+const PLAYBOOKS = Object.freeze([
   {
     id: "artifact",
     useWhen: "Author a new portable HTML artifact for Blueprint review",
@@ -12,7 +12,7 @@ export const PLAYBOOKS = Object.freeze([
       "Lead with one recommendation or governing idea, then expose evidence and no more than three primary choices.",
       "When the artifact asks for a choice, use an operable decision form: radios for mutually exclusive options, checkboxes or switches for independent choices, and a separate Queue response submit action. Give the form a unique safe id plus data-blueprint-response, and give every control a meaningful name and value.",
       "For visual, layout, or motion choices, render a representative specimen for every option. When behavior affects the decision, make each specimen demonstrate useful states or transitions with real HTML controls; static mockups are valid only when interaction is irrelevant.",
-      "Keep selection local and reversible. Never queue on radio, checkbox, select, or option-card change; one explicit Queue response action creates or replaces one private Feedback draft for that form.",
+      "Keep selection local and reversible. Never queue on radio, checkbox, select, or option-card change; one explicit Queue response action creates or replaces one typed private decision response for that form.",
       "Keep the source self-contained, responsive, keyboard-readable, and free of Blueprint runtime code.",
       "Reserve the brass meta band for instructions about operating or interpreting the review, never ordinary subject matter.",
       "Verify wide and narrow layouts, keyboard operation, queued-response behavior, and every representative specimen state before opening the review.",
@@ -32,7 +32,7 @@ export const PLAYBOOKS = Object.freeze([
       "Show concrete behavior or a representative wireframe for each visual option; prose-only visual choices are invalid. Demonstrate the states, transitions, or microinteractions that would materially affect the implemented experience, honor prefers-reduced-motion, and avoid decorative motion that supplies no decision evidence.",
       "Expose benefits, costs, reversibility, risks, and unknowns at comparable levels of detail.",
       "Carry settled decisions forward and do not ask them again without new evidence.",
-      "A selection remains browser-local until Queue response places one editable private draft in Feedback; re-queueing the same form replaces that unsent draft instead of adding another. Only an intent-bearing Approve with feedback or Revise using feedback submission authorizes the corresponding next action.",
+      "A selection remains browser-local until Queue response places one editable private decision response in the inspector; re-queueing the same form replaces that unsent response instead of adding another. A decision response alone leaves the final action labelled Approve and does not expose Revise using feedback. If actual revision comments also exist, those comments—not the decision—produce Approve with feedback and Revise using feedback.",
     ],
     next: [
       "Run `blueprint review <artifact.html>` only after the reviewer asks to launch the review; it opens and waits as one attached action.",
@@ -48,11 +48,11 @@ export const PLAYBOOKS = Object.freeze([
       "Use separate `blueprint open <artifact.html>` and `blueprint wait <artifact.html>` only to recover or diagnose an existing review; never run concurrent waits.",
       "Do not act on unsent browser drafts. Wait returns one immutable intent-bearing JSON packet and acknowledges only after complete delivery.",
       "Handle packet IDs idempotently because delivery is at least once.",
-      "An `approve` packet is final: the browser review surface retires after persistence; honor any attached comments and do not stage another revision or expect further browser feedback for that ended review.",
+      "An `approve` packet is final: the browser review surface retires after persistence; honor any typed decision responses and attached comments, and do not stage another revision or expect further browser feedback for that ended review. The reviewer may inspect the approved snapshot and History in the same tab through the read-only completion action, but that view never reactivates the session or creates new agent authority.",
       "A `revise` packet keeps the review active. Continue one attached wait while editing so later revise batches can join the same revision; replace a completed wait, but never run concurrent waits for one review.",
       "The reviewer shell keeps sent comments visible and derives waiting-for-agent versus agent-working state from packet acknowledgement. Acknowledge promptly after complete delivery, and do not interpret a still-queued batch as agent work already underway.",
       "Final approval is unavailable after a revise packet is submitted and remains unavailable until a revision covering that request is staged and the reviewer reveals it. Additional revise batches may still arrive while you work.",
-      "Before staging, account for every revise packet used as a basis and report every comment in those packets. Use report schema version 2 with `basisPacketIds`; each addressed or changed comment needs `before`, `after`, `summary`, `evidence`, and the amended element's `selector`.",
+      "Before staging, account for every revise packet used as a basis and report every revision comment in those packets. Decisions are typed basis inputs, not amendment items, and need no Accept/Reopen evidence. Use report schema version 2 with `basisPacketIds`; each addressed or changed comment needs `before`, `after`, `summary`, `evidence`, and the amended element's `selector`.",
       "Edit the authoritative HTML, then run `blueprint stage <artifact.html> --report <report.json>`. Staging opens a blocking ready curtain but never reveals the new snapshot.",
       "Only the reviewer may choose See latest revision, accept, reopen, approve, or end the session.",
       "If the wait is interrupted, restart the same wait; never create concurrent waits for one review.",

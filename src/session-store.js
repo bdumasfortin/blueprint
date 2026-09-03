@@ -6,7 +6,10 @@ import { assertSelfContainedHtml } from "./artifact.js";
 import { atomicWriteJson, readJson, writeImmutableFile } from "./atomic.js";
 import { canonicalArtifactPath, pathKeyFor, resolveInside } from "./paths.js";
 
-const SCHEMA_VERSION = 2;
+const STORE_SCHEMA_VERSION = 2;
+const PACKET_SCHEMA_VERSION = 3;
+const REPORT_SCHEMA_VERSION = 2;
+const HISTORY_SCHEMA_VERSION = 2;
 const ID_PATTERN = /^[a-zA-Z0-9._:-]{1,120}$/;
 const REPORT_STATUSES = new Set(["addressed", "changed", "stale"]);
 const PACKET_INTENTS = new Set(["approve", "revise"]);
@@ -78,10 +81,10 @@ function tokenMatches(actual, expected) {
 }
 
 function migrateManifest(manifest) {
-  if (manifest?.schemaVersion === SCHEMA_VERSION) return manifest;
+  if (manifest?.schemaVersion === STORE_SCHEMA_VERSION) return manifest;
   if (manifest?.schemaVersion !== 1) return manifest;
 
-  manifest.schemaVersion = SCHEMA_VERSION;
+  manifest.schemaVersion = STORE_SCHEMA_VERSION;
   for (const revision of manifest.revisions ?? []) {
     revision.basisPacketIds = Array.isArray(revision.basisPacketIds)
       ? revision.basisPacketIds
@@ -186,7 +189,7 @@ export class SessionStore {
       throw error;
     }
     manifest = migrateManifest(manifest);
-    if (manifest.schemaVersion !== SCHEMA_VERSION || manifest.sessionId !== sessionId) {
+    if (manifest.schemaVersion !== STORE_SCHEMA_VERSION || manifest.sessionId !== sessionId) {
       throw new BlueprintError("Review session state is incompatible or damaged.", 500, "state_invalid");
     }
     return manifest;
@@ -319,7 +322,7 @@ export class SessionStore {
         contents,
       );
       const manifest = {
-        schemaVersion: SCHEMA_VERSION,
+        schemaVersion: STORE_SCHEMA_VERSION,
         sessionId,
         reviewToken,
         artifactToken,
@@ -339,7 +342,7 @@ export class SessionStore {
       };
       await atomicWriteJson(this.manifestPath(sessionId), manifest);
       await atomicWriteJson(this.indexPath(pathKey), {
-        schemaVersion: SCHEMA_VERSION,
+        schemaVersion: STORE_SCHEMA_VERSION,
         pathKey,
         artifactPath: canonicalPath,
         sessionId,
@@ -353,9 +356,9 @@ export class SessionStore {
     if (!raw || typeof raw !== "object") throw new BlueprintError("Each draft must be an object.");
     const id = safeId(raw.id, "Draft");
     const kind = raw.kind ?? "initial";
-    if (!["initial", "reopen"].includes(kind)) throw new BlueprintError("Draft kind is invalid.");
+    if (!["initial", "reopen", "decision"].includes(kind)) throw new BlueprintError("Draft kind is invalid.");
     const existingFeedback = manifest.feedback.find((item) => item.id === id);
-    if (kind === "initial" && existingFeedback) {
+    if (["initial", "decision"].includes(kind) && existingFeedback) {
       throw new BlueprintError(`Draft ${id} conflicts with existing feedback.`);
     }
     if (kind === "reopen" && (!existingFeedback || existingFeedback.state !== "reopen-draft")) {
@@ -436,7 +439,9 @@ export class SessionStore {
           },
         });
       }
-      if (intent === "revise" && submittedDrafts.length === 0) {
+      const submittedDecisions = submittedDrafts.filter((draft) => draft.kind === "decision");
+      const submittedFeedback = submittedDrafts.filter((draft) => draft.kind !== "decision");
+      if (intent === "revise" && submittedFeedback.length === 0) {
         throw new BlueprintError("Add at least one comment before requesting a revision.");
       }
       for (const draft of submittedDrafts) {
@@ -445,16 +450,18 @@ export class SessionStore {
 
       const packetId = `pkt-${this.uuid()}`;
       const sequence = manifest.packets.length + 1;
-      const comments = submittedDrafts.map((draft) => ({
+      const recordForDraft = (draft) => ({
         id: draft.id,
         kind: draft.kind,
         body: draft.body.trim(),
         anchor: draft.anchor,
         sourceRevisionId: draft.sourceRevisionId ?? manifest.visibleRevisionId,
         createdAt: draft.createdAt,
-      }));
+      });
+      const comments = submittedFeedback.map(recordForDraft);
+      const decisions = submittedDecisions.map(recordForDraft);
       const packet = {
-        schemaVersion: SCHEMA_VERSION,
+        schemaVersion: PACKET_SCHEMA_VERSION,
         id: packetId,
         sessionId: manifest.sessionId,
         sequence,
@@ -464,6 +471,7 @@ export class SessionStore {
         sourceRevisionId: manifest.visibleRevisionId,
         submittedFromRevisionId: manifest.visibleRevisionId,
         note: "",
+        decisions,
         comments,
       };
 
@@ -520,6 +528,7 @@ export class SessionStore {
         createdAt,
         status: "queued",
         deliveredAt: null,
+        decisionIds: decisions.map((decision) => decision.id),
       });
       manifest.drafts = [];
       manifest.packetNote = "";
@@ -567,10 +576,10 @@ export class SessionStore {
       throw new BlueprintError("Agent report must be an object.");
     }
     const reportSchemaVersion = report.schemaVersion ?? 1;
-    if (![1, 2].includes(reportSchemaVersion)) {
+    if (![1, REPORT_SCHEMA_VERSION].includes(reportSchemaVersion)) {
       throw new BlueprintError("Agent report schema version is unsupported.");
     }
-    const rawBasisPacketIds = reportSchemaVersion === 2
+    const rawBasisPacketIds = reportSchemaVersion === REPORT_SCHEMA_VERSION
       ? report.basisPacketIds
       : [report.packetId];
     if (!Array.isArray(rawBasisPacketIds) || rawBasisPacketIds.length === 0) {
@@ -583,7 +592,7 @@ export class SessionStore {
     for (const packetId of basisPacketIds) {
       const packet = manifest.packets.find((item) => item.id === packetId);
       if (!packet) throw new BlueprintError(`Report references unknown packet ${packetId}.`);
-      if (reportSchemaVersion === 2 && packet.intent !== "revise") {
+      if (reportSchemaVersion === REPORT_SCHEMA_VERSION && packet.intent !== "revise") {
         throw new BlueprintError(`Report packet ${packetId} did not request a revision.`);
       }
     }
@@ -608,10 +617,10 @@ export class SessionStore {
         status: item.status,
         summary: safeString(item.summary, "Report summary", 2_000, { required: true }).trim(),
         evidence: safeString(item.evidence ?? "", "Report evidence", 5_000, {
-          required: reportSchemaVersion === 2,
+          required: reportSchemaVersion === REPORT_SCHEMA_VERSION,
         }).trim(),
       };
-      if (reportSchemaVersion === 2) {
+      if (reportSchemaVersion === REPORT_SCHEMA_VERSION) {
         normalized.before = safeString(item.before ?? "", "Report before value", 5_000, {
           required: item.status !== "stale",
         }).trim();
@@ -624,7 +633,7 @@ export class SessionStore {
       }
       return normalized;
     });
-    if (reportSchemaVersion === 2) {
+    if (reportSchemaVersion === REPORT_SCHEMA_VERSION) {
       const requiredFeedbackIds = new Set(
         manifest.feedback
           .filter((feedback) => feedback.history.some((entry) => basisPacketIds.includes(entry.packetId)))
@@ -663,7 +672,7 @@ export class SessionStore {
         const reportId = `rpt-${this.uuid()}`;
         const reportFile = `${String(sequence).padStart(4, "0")}-${reportId}.json`;
         reportRecord = {
-          schemaVersion: SCHEMA_VERSION,
+          schemaVersion: REPORT_SCHEMA_VERSION,
           id: reportId,
           sessionId: manifest.sessionId,
           revisionId,
@@ -852,6 +861,16 @@ export class SessionStore {
       createdAt: comment.createdAt ?? packet.createdAt,
     });
 
+    const decisionRecord = (decision, packet) => ({
+      id: decision.id,
+      body: decision.body,
+      anchor: decision.anchor,
+      sourceRevisionId: decision.sourceRevisionId,
+      packetId: packet.id,
+      packetIntent: packet.intent,
+      createdAt: decision.createdAt ?? packet.createdAt,
+    });
+
     const revisionCycles = await Promise.all(visibleRevisions.map(async (revision) => {
       const basisPackets = (revision.basisPacketIds ?? [])
         .map((packetId) => packetRecords.get(packetId))
@@ -866,6 +885,8 @@ export class SessionStore {
         createdAt: revision.createdAt,
         revision: publicRevision(revision),
         packetIds: basisPackets.map((packet) => packet.id),
+        decisions: basisPackets.flatMap((packet) =>
+          (packet.decisions ?? []).map((decision) => decisionRecord(decision, packet))),
         comments: basisPackets.flatMap((packet) => packet.comments.map((comment) => commentRecord(comment, packet))),
         amendments: (report?.comments ?? []).map((item) => {
           const feedback = feedbackById.get(item.commentId);
@@ -895,13 +916,14 @@ export class SessionStore {
           createdAt: packet.createdAt,
           revision: null,
           packetIds: [packet.id],
+          decisions: (packet.decisions ?? []).map((decision) => decisionRecord(decision, packet)),
           comments: packet.comments.map((comment) => commentRecord(comment, packet)),
           amendments: [],
         };
       });
 
     return {
-      schemaVersion: 1,
+      schemaVersion: HISTORY_SCHEMA_VERSION,
       updatedAt: manifest.updatedAt,
       cycles: [...pendingCycles, ...revisionCycles].sort((left, right) =>
         right.createdAt.localeCompare(left.createdAt)),

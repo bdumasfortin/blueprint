@@ -51,7 +51,7 @@ export function assertSelfContainedHtml(contents) {
   }
 }
 
-export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
+const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
 (() => {
   "use strict";
   const TYPE = "blueprint:annotation";
@@ -257,7 +257,7 @@ export const ANNOTATION_SDK = String.raw`<script data-blueprint-sdk>
       body: responseBody(form, prompt),
       selector: selectorFor(form),
     });
-    responseStatus(form, "Queued in Feedback. Use Revise using feedback or Approve with feedback to send.");
+    responseStatus(form, "Decision response queued. It will be submitted with your next review action.");
   }
 
   function targetElement(event) {

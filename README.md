@@ -72,6 +72,7 @@ Blueprint is heavily inspired by [Lavish](https://github.com/kunchenguid/lavish-
 
 ## Learn more
 
+- [Release notes](CHANGELOG.md)
 - [Product principles and settled decisions](docs/PRODUCT.md)
 - [Architecture, security, and recovery](docs/ARCHITECTURE.md)
 - [Development and contributor notes](docs/DEVELOPMENT.md)

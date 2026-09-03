@@ -72,7 +72,7 @@ Render the instruction as a compact band with a one-pixel brass border, a four-p
 - Lead with one recommendation.
 - Present no more than three primary choices with concise tradeoffs and supporting evidence available on demand.
 - When the reviewer must choose, use a labelled native decision form: radios for mutually exclusive options, checkboxes or switches for independent choices, and selects for longer lists. A selectable card is a visual label for a real input, not a click-only container.
-- Keep selection visibly distinct from queueing. Control changes remain local; one explicit **Queue response** action creates or replaces one editable private Feedback draft for the form and never sends it to the agent.
+- Keep selection visibly distinct from queueing. Control changes remain local; one explicit **Queue response** action creates or replaces one editable private decision response for the form and never sends it to the agent. Decision responses remain visually and semantically distinct from revision feedback.
 - Show a representative specimen for every visual, layout, or motion option. If behavior affects the choice, provide keyboard-operable controls that demonstrate meaningful states, transitions, or microinteractions rather than a static screenshot.
 - Use motion to explain state and causality, not as decoration. Honor `prefers-reduced-motion`, avoid distracting autoplay, and keep the static fallback equally understandable.
 - Keep artifacts responsive at wide and narrow widths, keyboard-readable, and self-contained.

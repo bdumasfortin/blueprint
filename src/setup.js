@@ -5,7 +5,7 @@ import path from "node:path";
 import { atomicWriteJson } from "./atomic.js";
 import { CliError } from "./axi.js";
 
-export const SETUP_AGENTS = Object.freeze(["codex", "claude"]);
+const SETUP_AGENTS = Object.freeze(["codex", "claude"]);
 const STATUS_MESSAGE = "Loading Blueprint review context";
 
 function codexHandler() {

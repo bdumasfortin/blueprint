@@ -25,12 +25,11 @@ assert.equal(packed.id, `${manifest.name}@${manifest.version}`);
 
 const files = packed.files.map((entry) => entry.path.replaceAll("\\", "/"));
 const required = [
+  "CHANGELOG.md",
   "LICENSE",
   "README.md",
   "bin/blueprint.js",
   "package.json",
-  "scripts/build-skill.js",
-  "skills/blueprint/SKILL.md",
   "src/cli.js",
   "src/server.js",
   "src/session-store.js",
@@ -41,12 +40,11 @@ for (const file of required) {
 }
 
 const allowed = [
+  "CHANGELOG.md",
   "LICENSE",
   "README.md",
   "package.json",
   "bin/",
-  "scripts/build-skill.js",
-  "skills/blueprint/",
   "src/",
 ];
 for (const file of files) {

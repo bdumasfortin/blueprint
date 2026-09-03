@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -8,7 +8,6 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { renderHookContext } from "../src/axi.js";
-import { createSkillMarkdown, MAX_SKILL_MARKDOWN_CHARS } from "../src/skill.js";
 
 const execFile = promisify(execFileCallback);
 const repositoryRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -63,7 +62,7 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   assert.match(playbooks.stdout, /"review-loop"/);
 
   const artifactPlaybook = await run(["playbook", "artifact"]);
-  assert.match(artifactPlaybook.stdout, /playbook_version: 7/);
+  assert.match(artifactPlaybook.stdout, /playbook_version: 9/);
   assert.match(artifactPlaybook.stdout, /radios for mutually exclusive options/);
   assert.match(artifactPlaybook.stdout, /data-blueprint-response/);
   assert.match(artifactPlaybook.stdout, /Queue response/);
@@ -72,13 +71,16 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   const decisionPlaybook = await run(["playbook", "decision"]);
   assert.match(decisionPlaybook.stdout, /labelled radio group/);
   assert.match(decisionPlaybook.stdout, /prefers-reduced-motion/);
-  assert.match(decisionPlaybook.stdout, /re-queueing the same form replaces that unsent draft/);
+  assert.match(decisionPlaybook.stdout, /re-queueing the same form replaces that unsent response/);
+  assert.match(decisionPlaybook.stdout, /decision response alone leaves the final action labelled Approve/);
 
   const reviewLoopPlaybook = await run(["playbook", "review-loop"]);
   assert.match(reviewLoopPlaybook.stdout, /blueprint review <artifact\.html>/);
   assert.match(reviewLoopPlaybook.stdout, /Do not end the turn while that command is still waiting/);
   assert.match(reviewLoopPlaybook.stdout, /Final approval is unavailable after a revise packet/);
   assert.match(reviewLoopPlaybook.stdout, /until a revision covering that request is staged and the reviewer reveals it/);
+  assert.match(reviewLoopPlaybook.stdout, /approved snapshot and History in the same tab through the read-only completion action/);
+  assert.match(reviewLoopPlaybook.stdout, /never reactivates the session or creates new agent authority/);
 
   const focused = await run(["open", "--help"]);
   assert.match(focused.stdout, /^Usage: blueprint open/m);
@@ -87,7 +89,7 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
 
   const atomicReviewHelp = await run(["review", "--help"]);
   assert.match(atomicReviewHelp.stdout, /^Usage: blueprint review/m);
-  assert.match(atomicReviewHelp.stdout, /stay attached until one feedback packet arrives/);
+  assert.match(atomicReviewHelp.stdout, /stay attached until one review packet arrives/);
   assert.match(atomicReviewHelp.stdout, /standard output remains exact packet JSON/);
 
   await assert.rejects(
@@ -122,16 +124,4 @@ test("SessionStart context is compact valid hook JSON without secrets", async (t
   const recovered = JSON.parse(await renderHookContext("claude", { cwd: root, stateDir }));
   assert.match(recovered.hookSpecificOutput.additionalContext, /live_state_error:/);
   assert.match(recovered.hookSpecificOutput.additionalContext, /run `blueprint`/);
-});
-
-test("the packaged Blueprint skill is a generated discovery stub", async () => {
-  const expected = createSkillMarkdown();
-  const actual = await readFile(path.join(repositoryRoot, "skills", "blueprint", "SKILL.md"), "utf8");
-  assert.equal(actual, expected);
-  assert.ok(actual.length < MAX_SKILL_MARKDOWN_CHARS);
-  assert.match(actual, /name: blueprint/);
-  assert.match(actual, /Treat the CLI as the source of truth/);
-  assert.match(actual, /blueprint review <artifact\.html>/);
-  assert.match(actual, /Do not end the turn while it is waiting/);
-  assert.doesNotMatch(actual, /127\.0\.0\.1|implementation detail/i);
 });
