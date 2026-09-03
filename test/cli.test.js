@@ -227,6 +227,10 @@ test("the CLI reports the approved visual authority without inheriting workspace
   assert.match(result.stdout, /distinct brass meta layer/);
   assert.match(result.stdout, /#d8a34d/);
   assert.match(result.stdout, /operable labelled form/);
+  assert.match(result.stdout, /human-readable project or workspace name before the review title/);
+  assert.match(result.stdout, /complete preview of every decision, preference, or confirmation/);
+  assert.match(result.stdout, /Collapse supporting evidence and edge cases by default/);
+  assert.match(result.stdout, /Omit background and rationale already established in the conversation/);
   assert.match(result.stdout, /data-blueprint-response/);
   assert.match(result.stdout, /Queue response/);
   assert.match(result.stdout, /decision-relevant states, transitions, or microinteractions/);

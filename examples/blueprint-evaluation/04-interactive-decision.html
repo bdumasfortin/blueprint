@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Blueprint interactive decision specimen</title>
+  <title>Beacon · Incident action progress</title>
   <style>
     :root {
       color-scheme: dark;
@@ -50,9 +50,10 @@
       text-transform: uppercase;
     }
     .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+    .brand strong { color: var(--ink); font-size: 12px; }
     .brand-mark { width: 16px; height: 16px; border: 1px solid var(--accent); position: relative; }
     .brand-mark::after { content: ""; position: absolute; left: 3px; top: 3px; width: 7px; height: 1px; background: var(--accent); transform: rotate(-45deg); transform-origin: left center; }
-    .hero { padding: 52px 0 36px; border-bottom: 1px solid var(--line); }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .6fr); gap: 28px; padding: 46px 0 32px; border-bottom: 1px solid var(--line); }
     .eyebrow, .label {
       color: var(--accent);
       font: 700 10px/1.25 ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -61,8 +62,15 @@
     }
     h1 { max-width: 980px; margin: 12px 0 16px; font-size: clamp(38px, 5vw, 70px); line-height: .98; letter-spacing: -.045em; }
     .lede { max-width: 850px; margin: 0; color: #bdc9cd; font-size: 17px; line-height: 1.65; }
+    .ask-preview { align-self: start; border: 1px solid var(--accent); background: linear-gradient(145deg, rgba(67, 229, 221, .1), rgba(11, 17, 24, .96) 58%); }
+    .ask-preview strong { display: block; padding: 12px 14px; border-bottom: 1px solid rgba(67, 229, 221, .35); color: var(--accent); font: 700 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .09em; text-transform: uppercase; }
+    .ask-preview ol { margin: 0; padding: 10px 14px 12px 40px; }
+    .ask-preview li { padding: 7px 0; }
+    .ask-preview a { color: var(--ink); text-decoration-color: rgba(67, 229, 221, .55); text-underline-offset: 3px; }
+    .ask-preview span { display: block; padding: 10px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
     .meta-band {
-      margin-top: 28px;
+      grid-column: 1 / -1;
+      margin-top: 0;
       padding: 15px 18px 15px 22px;
       border: 1px solid rgba(216, 163, 77, .65);
       border-left: 4px solid var(--brass);
@@ -152,9 +160,13 @@
     .form-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 18px; padding: 15px; border: 1px solid var(--line); background: rgba(8, 13, 18, .96); }
     .form-status { color: var(--muted); font-size: 12px; line-height: 1.45; }
     .queue-button { flex: 0 0 auto; min-width: 150px; padding: 11px 16px; border: 1px solid var(--accent); border-radius: 2px; background: var(--accent); color: #03201f; cursor: pointer; font: 800 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .04em; text-transform: uppercase; }
+    .supporting-evidence { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); background: rgba(8, 13, 18, .96); }
+    .supporting-evidence summary { color: var(--ink); cursor: pointer; font-weight: 750; }
+    .supporting-evidence p { max-width: 850px; margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
     .footer { padding: 27px 0; border-top: 1px solid var(--line); color: var(--faint); font: 700 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
     @keyframes progress { 0% { transform: translateX(-110%); } 60%, 100% { transform: translateX(250%); } }
     @media (max-width: 1050px) {
+      .hero { grid-template-columns: 1fr; }
       .options { grid-template-columns: 1fr 1fr; }
       .option:first-child { grid-column: 1 / -1; }
     }
@@ -176,24 +188,31 @@
 <body>
   <main class="page">
     <header class="masthead">
-      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Blueprint</div>
-      <span>Interactive decision specimen</span>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Workspace <strong>Beacon</strong></div>
+      <span>Review / Incident action progress</span>
     </header>
 
     <section class="hero" aria-labelledby="title">
-      <div class="eyebrow">Fictional product decision</div>
-      <h1 id="title">Choose how an incident action reports progress.</h1>
-      <p class="lede">Each candidate uses the same incident and the same four states. Exercise the controls to judge how the pattern handles latency, success, and recovery—not only how it looks at rest.</p>
+      <div>
+        <div class="eyebrow">Recommendation</div>
+        <h1 id="title">Keep incident progress beside the action.</h1>
+        <p class="lede">Inline status preserves the operator's context through latency, confirmation, and recovery.</p>
+      </div>
+      <aside class="ask-preview" aria-labelledby="ask-preview-title">
+        <strong id="ask-preview-title">What you will decide</strong>
+        <ol><li><a href="#incident-action-pattern">Where progress and recovery should appear</a></li></ol>
+        <span>One decision. The response controls sit with the three live specimens.</span>
+      </aside>
       <div class="meta-band">
-        <strong>Review protocol</strong>
-        Explore the states in every specimen, choose one pattern with its radio control, then select <b>Queue response</b>. The selection becomes one editable private decision response. It is not sent until your next Blueprint review action; by itself, it leaves that action labelled <b>Approve</b> and does not request a revision.
+        <strong>How to respond</strong>
+        Exercise the specimen states, choose one pattern, then select <b>Queue response</b>. Your choice remains private until you approve or submit revision feedback.
       </div>
     </section>
 
     <section class="decision" aria-labelledby="decision-title">
       <div class="section-head">
-        <div><div class="label">Three representative options</div><h2 id="decision-title">Keep state changes close to the action.</h2></div>
-        <p>The inline pattern is recommended because it keeps confirmation and recovery in context. The drawer preserves more history; the toast minimizes layout movement but is easiest to miss.</p>
+        <div><div class="label">Decision 1 of 1</div><h2 id="decision-title">Where should progress and recovery appear?</h2></div>
+        <p><b>Recommended: inline status.</b> The drawer preserves more history; the toast moves less layout but is easiest to miss.</p>
       </div>
 
       <form id="incident-action-pattern" data-blueprint-response="Choose the incident action progress pattern">
@@ -264,9 +283,14 @@
           <button class="queue-button" type="submit">Queue response</button>
         </div>
       </form>
+
+      <details class="supporting-evidence">
+        <summary>Supporting evidence and edge cases</summary>
+        <p>This fictional specimen assumes an operator remains focused on one incident. A drawer becomes more useful if actions must be compared across incidents; a persistent activity log would then be a separate product requirement rather than a reason to move routine feedback away from the action.</p>
+      </details>
     </section>
 
-    <footer class="footer">Blueprint / interactive decision contract specimen / 2026-08-29</footer>
+    <footer class="footer">Fictional workspace / Beacon · Review / Incident action progress · Ask-first contract specimen</footer>
   </main>
 
   <script>

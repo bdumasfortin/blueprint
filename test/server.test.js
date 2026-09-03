@@ -60,7 +60,10 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   assert.match(shell, />Copy feedback<\/button>/);
   assert.match(shell, /id="ended-curtain"[^>]*role="dialog"[^>]*aria-modal="true"/);
   assert.match(shell, /Review closed/);
-  assert.match(shell, /Your final review submission is queued for the agent\. This review is now read-only/);
+  assert.match(shell, /Your final review submission is queued for the agent\. This review is now read-only\. You can close this tab\./);
+  assert.match(shell, /id="ended-message">This review session has ended\. You can close this tab and return to your agent\.<\/p>/);
+  assert.match(shell, /function retireReview\(title = "Review closed", message = "This review session has ended\. You can close this tab and return to your agent\."/);
+  assert.match(shell, /retireReview\("Review ended", "This review session is closed\. You can close this tab and return to your agent\."\)/);
   assert.match(shell, /function retireReview\(title = "Review closed"/);
   assert.match(shell, /id="ended-actions"[^>]*hidden[\s\S]*id="view-approved-review"[^>]*>View approved review<\/button>/);
   assert.doesNotMatch(shell, /close-review-tab|Close tab|ended-close-help|window\.close\(\)|browser kept this tab open/i);

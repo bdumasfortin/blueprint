@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -62,13 +62,18 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   assert.match(playbooks.stdout, /"review-loop"/);
 
   const artifactPlaybook = await run(["playbook", "artifact"]);
-  assert.match(artifactPlaybook.stdout, /playbook_version: 9/);
+  assert.match(artifactPlaybook.stdout, /playbook_version: 10/);
+  assert.match(artifactPlaybook.stdout, /human-readable project or workspace name before the review title/);
+  assert.match(artifactPlaybook.stdout, /complete preview of every decision, preference, or confirmation/);
+  assert.match(artifactPlaybook.stdout, /Collapse supporting evidence and edge cases by default/);
+  assert.match(artifactPlaybook.stdout, /Omit background and rationale already established in the conversation/);
   assert.match(artifactPlaybook.stdout, /radios for mutually exclusive options/);
   assert.match(artifactPlaybook.stdout, /data-blueprint-response/);
   assert.match(artifactPlaybook.stdout, /Queue response/);
   assert.match(artifactPlaybook.stdout, /states or transitions/);
 
   const decisionPlaybook = await run(["playbook", "decision"]);
+  assert.match(decisionPlaybook.stdout, /Place the response controls beside the smallest amount of evidence needed/);
   assert.match(decisionPlaybook.stdout, /labelled radio group/);
   assert.match(decisionPlaybook.stdout, /prefers-reduced-motion/);
   assert.match(decisionPlaybook.stdout, /re-queueing the same form replaces that unsent response/);
@@ -102,6 +107,23 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
       return true;
     },
   );
+});
+
+test("the canonical decision specimen demonstrates the ask-first content contract", async () => {
+  const example = await readFile(
+    path.join(repositoryRoot, "examples", "blueprint-evaluation", "04-interactive-decision.html"),
+    "utf8",
+  );
+  const workspace = example.indexOf('Workspace <strong>Beacon</strong>');
+  const reviewTitle = example.indexOf('<h1 id="title">');
+  const askPreview = example.indexOf('What you will decide');
+  const responseForm = example.indexOf('id="incident-action-pattern"');
+
+  assert.ok(workspace >= 0 && workspace < reviewTitle);
+  assert.ok(askPreview > reviewTitle && askPreview < responseForm);
+  assert.match(example, /href="#incident-action-pattern"/);
+  assert.match(example, /<details class="supporting-evidence">/);
+  assert.match(example, /<summary>Supporting evidence and edge cases<\/summary>/);
 });
 
 test("SessionStart context is compact valid hook JSON without secrets", async (t) => {

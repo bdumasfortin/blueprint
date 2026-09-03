@@ -296,7 +296,7 @@ export function renderReviewShell(reviewToken, nonce, initialReviewName = "Bluep
     <div class="ended-dialog">
       <div class="ended-kicker">Blueprint review</div>
       <h1 id="ended-title" tabindex="-1">Review closed</h1>
-      <p id="ended-message">This review session has ended. Return to your agent to continue.</p>
+      <p id="ended-message">This review session has ended. You can close this tab and return to your agent.</p>
       <div class="ended-actions" id="ended-actions" hidden>
         <button class="primary" id="view-approved-review" type="button">View approved review</button>
       </div>
@@ -368,7 +368,7 @@ export function renderReviewShell(reviewToken, nonce, initialReviewName = "Bluep
       return state?.status === "ended" && state.latestPacket?.intent === "approve";
     }
 
-    function retireReview(title = "Review closed", message = "This review session has ended. Return to your agent to continue.", approved = false) {
+    function retireReview(title = "Review closed", message = "This review session has ended. You can close this tab and return to your agent.", approved = false) {
       endedTitle.textContent = title;
       endedMessage.textContent = message;
       endedActions.hidden = !approved;
@@ -395,7 +395,7 @@ export function renderReviewShell(reviewToken, nonce, initialReviewName = "Bluep
     function showApprovedCompletion() {
       retireReview(
         "Review approved",
-        "Your final review submission is queued for the agent. This review is now read-only.",
+        "Your final review submission is queued for the agent. This review is now read-only. You can close this tab.",
         true,
       );
     }
@@ -1264,7 +1264,7 @@ export function renderReviewShell(reviewToken, nonce, initialReviewName = "Bluep
       if (!confirm("End this Blueprint review? Saved history will remain available.")) return;
       try {
         state = await api("/end", { method: "POST", body: "{}" });
-        retireReview("Review ended", "This review session is closed. Return to your agent to continue.");
+        retireReview("Review ended", "This review session is closed. You can close this tab and return to your agent.");
       }
       catch (error) { toast(error.message, true); }
     });

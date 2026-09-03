@@ -1,6 +1,6 @@
 import { CliError, renderFields, renderList, renderTable } from "./axi.js";
 
-const PLAYBOOK_VERSION = 9;
+const PLAYBOOK_VERSION = 10;
 
 const PLAYBOOKS = Object.freeze([
   {
@@ -9,7 +9,11 @@ const PLAYBOOKS = Object.freeze([
     guidance: [
       "Run `blueprint design` before authoring; it is the current visual authority.",
       "Use HTML only when interaction or visual structure materially improves understanding over concise prose.",
-      "Lead with one recommendation or governing idea, then expose evidence and no more than three primary choices.",
+      "Open with the human-readable project or workspace name before the review title. Show a filesystem path only when the readable name is ambiguous.",
+      "In the opening viewport, lead with one recommendation and one reason, then give a complete preview of every decision, preference, or confirmation the review will request. Link each preview item to its response area when the artifact is long enough to scroll.",
+      "Omit background and rationale already established in the conversation unless they materially change the recommendation or a choice. Do not replay the thread as an introduction.",
+      "Collapse supporting evidence and edge cases by default unless they are necessary to understand the primary options. Every visible paragraph must help the reviewer orient, decide, or verify.",
+      "Present no more than three primary choices, and keep their labels and tradeoffs short.",
       "When the artifact asks for a choice, use an operable decision form: radios for mutually exclusive options, checkboxes or switches for independent choices, and a separate Queue response submit action. Give the form a unique safe id plus data-blueprint-response, and give every control a meaningful name and value.",
       "For visual, layout, or motion choices, render a representative specimen for every option. When behavior affects the decision, make each specimen demonstrate useful states or transitions with real HTML controls; static mockups are valid only when interaction is irrelevant.",
       "Keep selection local and reversible. Never queue on radio, checkbox, select, or option-card change; one explicit Queue response action creates or replaces one typed private decision response for that form.",
@@ -26,8 +30,9 @@ const PLAYBOOKS = Object.freeze([
     id: "decision",
     useWhen: "Explain a consequential plan or compare options before implementation",
     guidance: [
-      "State the decision, recommendation, current evidence, and authority boundary at the top.",
+      "State the project or workspace, decision, recommendation, one-sentence reason, complete ask preview, and authority boundary at the top. Defer evidence that is not needed to understand the ask.",
       "Present at most three mutually exclusive primary options and make the recommended option visually explicit.",
+      "Place the response controls beside the smallest amount of evidence needed to make that decision. Put supporting detail and edge cases afterward in collapsed disclosure sections.",
       "Make mutually exclusive options selectable through a labelled radio group, preferably with the whole option card as its label. Use checkboxes or switches only for independently combinable choices, and a select only when a longer option list makes cards impractical.",
       "Show concrete behavior or a representative wireframe for each visual option; prose-only visual choices are invalid. Demonstrate the states, transitions, or microinteractions that would materially affect the implemented experience, honor prefers-reduced-motion, and avoid decorative motion that supplies no decision evidence.",
       "Expose benefits, costs, reversibility, risks, and unknowns at comparable levels of detail.",

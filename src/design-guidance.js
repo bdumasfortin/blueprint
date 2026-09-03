@@ -23,7 +23,11 @@ Do not automatically inspect, infer, or inherit a design system merely because o
 
 ## Settled authoring constraints
 
-- Lead with one recommendation. Present no more than three primary choices, with short tradeoffs and supporting evidence available on demand.
+- Put the human-readable project or workspace name before the review title. Include a filesystem path only when the readable name is ambiguous.
+- Make the opening viewport an orientation surface: lead with one recommendation and one reason, then give a complete preview of every decision, preference, or confirmation the artifact will request. Link preview items to their response areas when the artifact scrolls.
+- Omit background and rationale already established in the conversation unless it materially changes the recommendation or a choice. Do not turn the artifact into a replay of the thread.
+- Present no more than three primary choices, with short labels and tradeoffs. Place each response control beside the smallest amount of evidence needed to choose.
+- Collapse supporting evidence and edge cases by default unless they are necessary to understand the primary options. Every visible paragraph should help the reviewer orient, decide, or verify.
 - If the reviewer is expected to choose, provide an operable labelled form instead of making them annotate their preference. Use radios for one-of-many options, checkboxes or switches for independent choices, and select controls for longer lists. Selectable cards should be real labels around native inputs, not click-only divs.
 - Keep control changes local and reversible. A decision form uses a unique safe \`id\`, a concise \`data-blueprint-response\` prompt, meaningful control names and values, and one explicit **Queue response** submit button. Queueing creates or replaces one typed private decision response; it never sends to the agent, creates revision feedback, or ends the review. A queued decision alone leaves the final action labelled **Approve** and does not expose **Revise using feedback**.
 - For visual, layout, or motion decisions, show a representative specimen for every option instead of asking the reviewer to choose from prose alone. When behavior matters, specimens must expose decision-relevant states, transitions, or microinteractions through operable HTML controls. Static wireframes are acceptable only when interaction would not change the decision.
