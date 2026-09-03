@@ -20,7 +20,7 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   const root = await mkdtemp(path.join(tmpdir(), "blueprint-server-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const artifact = path.join(root, "artifact.html");
-  await writeFile(artifact, "<!doctype html><h1>Sandbox me</h1>");
+  await writeFile(artifact, "<!doctype html><title>Sandbox &amp; trust &lt;safe&gt;</title><h1>Sandbox me</h1>");
 
   const running = await startBlueprintServer({
     stateDir: path.join(root, "state"),
@@ -46,6 +46,12 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   const shellResponse = await fetch(opened.reviewUrl);
   assert.equal(shellResponse.status, 200);
   const shell = await shellResponse.text();
+  assert.match(shell, /<title>Sandbox &amp; trust &lt;safe&gt; · Blueprint<\/title>/);
+  assert.match(shell, /<link rel="icon" type="image\/svg\+xml" href="data:image\/svg\+xml,/);
+  assert.match(shell, /M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7/);
+  assert.doesNotMatch(shell, /M4 4h24v24H4zM4 16h24M16 4v24/);
+  assert.match(shell, /document\.title = state\.reviewName \+ " · Blueprint"/);
+  assert.match(shell, /document\.getElementById\("artifact-name"\)\.textContent = state\.reviewName/);
   assert.match(shell, /sandbox="allow-scripts"/);
   assert.doesNotMatch(shell, /allow-same-origin/);
   assert.match(shell, /Hold Alt\/Option and click any element to leave feedback/);
@@ -56,15 +62,14 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   assert.match(shell, /Review closed/);
   assert.match(shell, /Your final review submission is queued for the agent\. This review is now read-only/);
   assert.match(shell, /function retireReview\(title = "Review closed"/);
-  assert.match(shell, /id="ended-actions"[^>]*hidden[\s\S]*id="close-review-tab"[^>]*>Close tab<\/button>[\s\S]*id="view-approved-review"[^>]*>View approved review<\/button>/);
-  assert.match(shell, /Your browser kept this tab open\. You can close it manually/);
+  assert.match(shell, /id="ended-actions"[^>]*hidden[\s\S]*id="view-approved-review"[^>]*>View approved review<\/button>/);
+  assert.doesNotMatch(shell, /close-review-tab|Close tab|ended-close-help|window\.close\(\)|browser kept this tab open/i);
   assert.match(shell, /function isApprovedReview\(\)[\s\S]*state\.latestPacket\?\.intent === "approve"/);
   assert.match(shell, /function openApprovedReview\(\)[\s\S]*frame\.src = revisionUrl\(state\.visibleRevision, true\)/);
   assert.match(shell, /id="readonly-status"[^>]*hidden>Read only<\/div>/);
   assert.match(shell, /id="readonly-back"[^>]*hidden>Back to completion<\/button>/);
   assert.match(shell, /return readOnly \? url \+ "\?mode=readonly" : url/);
   assert.match(shell, /if \(readOnlyViewer\) next = "history"/);
-  assert.match(shell, /window\.close\(\)[\s\S]*if \(window\.closed\) return[\s\S]*endedCloseHelp\.hidden = false/);
   assert.match(shell, /app\.hidden = true/);
   assert.match(shell, /frame\.src = "about:blank"/);
   assert.match(shell, /clearInterval\(pollTimer\)/);
@@ -176,6 +181,7 @@ test("agent and reviewer authorities are separated and artifact routes are sandb
   );
   assert.equal(stateResponse.status, 200);
   const state = await stateResponse.json();
+  assert.equal(state.reviewName, "Sandbox & trust <safe>");
   assert.ok(state.visibleRevision);
   assert.equal(state.stagedRevision, null);
 

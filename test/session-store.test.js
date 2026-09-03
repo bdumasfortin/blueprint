@@ -31,6 +31,30 @@ function initialDraft(id = "feedback-1") {
   };
 }
 
+test("review identity follows the visible revision title with a filename fallback", async (t) => {
+  const { root, artifact } = await createHarness(t);
+  await writeFile(artifact, "<!doctype html><title>Checkout &amp; payments</title><h1>First revision</h1>");
+  const store = new SessionStore(root);
+  const opened = await store.openArtifact(artifact);
+
+  assert.equal(opened.reviewName, "Checkout & payments");
+  assert.equal(opened.visibleRevision.title, "Checkout & payments");
+
+  await writeFile(artifact, "<!doctype html><title>Release readiness</title><h1>Second revision</h1>");
+  const staged = await store.stageArtifact(artifact);
+  assert.equal(staged.revision.title, "Release readiness");
+  assert.equal((await store.getBrowserState(opened.reviewToken)).reviewName, "Checkout & payments");
+
+  const revealed = await store.revealStaged(opened.reviewToken);
+  assert.equal(revealed.reviewName, "Release readiness");
+
+  const untitledArtifact = path.join(path.dirname(artifact), "fallback-review.html");
+  await writeFile(untitledArtifact, "<!doctype html><h1>Untitled review</h1>");
+  const untitled = await store.openArtifact(untitledArtifact);
+  assert.equal(untitled.reviewName, "fallback-review.html");
+  assert.equal(untitled.visibleRevision.title, "");
+});
+
 function decisionDraft(id = "response-1-submission-model") {
   return {
     id,

@@ -1,4 +1,41 @@
 const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
+const TITLE_ENTITIES = new Map([
+  ["amp", "&"],
+  ["apos", "'"],
+  ["copy", "©"],
+  ["gt", ">"],
+  ["hellip", "…"],
+  ["lt", "<"],
+  ["mdash", "—"],
+  ["middot", "·"],
+  ["nbsp", " "],
+  ["ndash", "–"],
+  ["quot", "\""],
+  ["reg", "®"],
+  ["trade", "™"],
+]);
+
+function decodeTitleEntity(match, entity) {
+  if (!entity.startsWith("#")) return TITLE_ENTITIES.get(entity.toLowerCase()) ?? match;
+  const hexadecimal = entity[1]?.toLowerCase() === "x";
+  const digits = entity.slice(hexadecimal ? 2 : 1);
+  const codePoint = Number.parseInt(digits, hexadecimal ? 16 : 10);
+  if (!Number.isInteger(codePoint)
+    || codePoint === 0
+    || codePoint > 0x10ffff
+    || (codePoint >= 0xd800 && codePoint <= 0xdfff)) return "�";
+  return String.fromCodePoint(codePoint);
+}
+
+export function extractArtifactTitle(contents) {
+  const match = /<title(?:\s[^>]*)?>([\s\S]*?)<\/title\s*>/i.exec(contents);
+  if (!match) return "";
+  return match[1]
+    .replace(/&(#(?:x[0-9a-f]+|\d+)|[a-z][a-z0-9]+);/gi, decodeTitleEntity)
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
 
 function isEmbeddedReference(value) {
   const normalized = value.trim().toLowerCase();

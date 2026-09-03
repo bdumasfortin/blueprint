@@ -2,6 +2,16 @@
 
 Notable public changes to Blueprint are recorded here. Version numbers follow Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+
+- Review tabs use the visible artifact title plus `· Blueprint`, fall back to the HTML filename, and display the approved Review aperture favicon.
+
+### Removed
+
+- The ineffective post-approval **Close tab** action and its manual-close fallback. **View approved review** is now the sole completion action.
+
 ## [0.2.1] - 2026-09-02
 
 ### Added

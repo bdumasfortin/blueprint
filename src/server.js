@@ -154,9 +154,9 @@ export async function startBlueprintServer(options = {}) {
       }
 
       if (request.method === "GET" && parts[0] === "review" && parts.length === 2) {
-        await store.loadByReviewToken(parts[1]);
+        const state = await store.getBrowserState(parts[1]);
         const nonce = randomBytes(18).toString("base64");
-        return sendHtml(response, 200, renderReviewShell(parts[1], nonce), {
+        return sendHtml(response, 200, renderReviewShell(parts[1], nonce, state.reviewName), {
           "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; connect-src 'self'; frame-src 'self'; img-src data:; font-src data:; base-uri 'none'; form-action 'none'`,
           "x-frame-options": "DENY",
         });

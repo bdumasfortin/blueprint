@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypt
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { assertSelfContainedHtml } from "./artifact.js";
+import { assertSelfContainedHtml, extractArtifactTitle } from "./artifact.js";
 import { atomicWriteJson, readJson, writeImmutableFile } from "./atomic.js";
 import { canonicalArtifactPath, pathKeyFor, resolveInside } from "./paths.js";
 
@@ -265,11 +265,13 @@ export class SessionStore {
   openResponse(manifest) {
     const visible = manifest.revisions.find((item) => item.id === manifest.visibleRevisionId) ?? null;
     const staged = manifest.revisions.find((item) => item.id === manifest.stagedRevisionId) ?? null;
+    const artifactName = path.basename(manifest.artifactPath);
     return {
       sessionId: manifest.sessionId,
       reviewToken: manifest.reviewToken,
       status: manifest.status,
-      artifactName: path.basename(manifest.artifactPath),
+      artifactName,
+      reviewName: visible?.title || artifactName,
       visibleRevision: publicRevision(visible),
       stagedRevision: publicRevision(staged),
     };
@@ -309,6 +311,7 @@ export class SessionStore {
         id: revisionId,
         sequence: 1,
         hash,
+        title: extractArtifactTitle(contents),
         path: relativeRevisionPath,
         createdAt,
         source: "open",
@@ -696,6 +699,7 @@ export class SessionStore {
         id: revisionId,
         sequence,
         hash,
+        title: extractArtifactTitle(contents),
         path: `revisions/${revisionFile}`,
         createdAt,
         source: "agent",
@@ -806,10 +810,12 @@ export class SessionStore {
   browserStateFromManifest(manifest) {
     const visible = manifest.revisions.find((item) => item.id === manifest.visibleRevisionId) ?? null;
     const staged = manifest.revisions.find((item) => item.id === manifest.stagedRevisionId) ?? null;
+    const artifactName = path.basename(manifest.artifactPath);
     return {
       schemaVersion: manifest.schemaVersion,
       sessionId: manifest.sessionId,
-      artifactName: path.basename(manifest.artifactPath),
+      artifactName,
+      reviewName: visible?.title || artifactName,
       status: manifest.status,
       createdAt: manifest.createdAt,
       updatedAt: manifest.updatedAt,

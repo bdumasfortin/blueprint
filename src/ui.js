@@ -2,14 +2,25 @@ function escapeJsonForScript(value) {
   return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-export function renderReviewShell(reviewToken, nonce) {
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+export function renderReviewShell(reviewToken, nonce, initialReviewName = "Blueprint review") {
   const tokenLiteral = escapeJsonForScript(reviewToken);
+  const reviewName = escapeHtml(initialReviewName);
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Blueprint review</title>
+  <title>${reviewName} · Blueprint</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='3' fill='%23071016'/%3E%3Cpath d='M5 12V5h7M20 5h7v7M27 20v7h-7M12 27H5v-7' fill='none' stroke='%2343e5dd' stroke-width='3' stroke-linecap='square'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%23edf4f3'/%3E%3C/svg%3E">
   <style>
     :root {
       color-scheme: dark;
@@ -193,9 +204,8 @@ export function renderReviewShell(reviewToken, nonce) {
     .ended-dialog h1 { margin: 0 0 9px; font-size: clamp(24px, 5vw, 38px); line-height: 1.08; }
     .ended-dialog h1:focus { outline: none; }
     .ended-dialog p { margin: 0 auto; max-width: 42ch; color: var(--muted); }
-    .ended-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 22px; }
-    .ended-actions button { min-height: 42px; }
-    .ended-close-help { margin-top: 12px !important; color: var(--warn) !important; font-size: 12px; }
+    .ended-actions { margin-top: 22px; }
+    .ended-actions button { width: 100%; min-height: 42px; }
     .readonly-status { display: inline-flex; align-items: center; margin-top: 6px; padding: 2px 6px; border: 1px solid rgba(116, 233, 150, .42); border-radius: 999px; color: var(--ok); font: 700 9px/1.3 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .075em; text-transform: uppercase; }
     .readonly-back { min-height: 32px; }
     .app.read-only .tabs { grid-template-columns: 1fr; }
@@ -215,9 +225,6 @@ export function renderReviewShell(reviewToken, nonce) {
       .inspector-closed .inspector { transform: translateY(105%); }
       .sticky-action { right: 0; }
     }
-    @media (max-width: 460px) {
-      .ended-actions { grid-template-columns: 1fr; }
-    }
   </style>
 </head>
 <body>
@@ -230,7 +237,7 @@ export function renderReviewShell(reviewToken, nonce) {
       <header class="inspector-header">
         <div class="inspector-top">
           <div class="inspector-identity">
-            <div class="artifact-name" id="artifact-name">Blueprint review</div>
+            <div class="artifact-name" id="artifact-name">${reviewName}</div>
             <div class="readonly-status" id="readonly-status" hidden>Read only</div>
           </div>
           <div class="inspector-actions">
@@ -291,10 +298,8 @@ export function renderReviewShell(reviewToken, nonce) {
       <h1 id="ended-title" tabindex="-1">Review closed</h1>
       <p id="ended-message">This review session has ended. Return to your agent to continue.</p>
       <div class="ended-actions" id="ended-actions" hidden>
-        <button class="primary" id="close-review-tab" type="button">Close tab</button>
-        <button class="secondary" id="view-approved-review" type="button">View approved review</button>
+        <button class="primary" id="view-approved-review" type="button">View approved review</button>
       </div>
-      <p class="ended-close-help" id="ended-close-help" role="status" aria-live="polite" hidden>Your browser kept this tab open. You can close it manually.</p>
     </div>
   </section>
   <div class="toast-overlay" id="toast-overlay" hidden><div class="toast" id="toast" role="status" aria-live="polite"></div></div>
@@ -320,8 +325,6 @@ export function renderReviewShell(reviewToken, nonce) {
     const endedTitle = document.getElementById("ended-title");
     const endedMessage = document.getElementById("ended-message");
     const endedActions = document.getElementById("ended-actions");
-    const endedCloseHelp = document.getElementById("ended-close-help");
-    const closeReviewTabButton = document.getElementById("close-review-tab");
     const viewApprovedReviewButton = document.getElementById("view-approved-review");
     const readonlyStatus = document.getElementById("readonly-status");
     const readonlyBackButton = document.getElementById("readonly-back");
@@ -369,7 +372,6 @@ export function renderReviewShell(reviewToken, nonce) {
       endedTitle.textContent = title;
       endedMessage.textContent = message;
       endedActions.hidden = !approved;
-      endedCloseHelp.hidden = true;
       endedCurtain.hidden = false;
       if (!reviewRetired) {
         postAnnotationModifier(false);
@@ -414,14 +416,6 @@ export function renderReviewShell(reviewToken, nonce) {
       renderHistory();
       setPane("history");
       requestAnimationFrame(() => readonlyBackButton.focus());
-    }
-
-    function closeReviewTab() {
-      window.close();
-      setTimeout(() => {
-        if (window.closed) return;
-        endedCloseHelp.hidden = false;
-      }, 150);
     }
 
     async function api(path, options = {}) {
@@ -1045,7 +1039,8 @@ export function renderReviewShell(reviewToken, nonce) {
 
     function render() {
       const feedbackScroll = captureFeedbackScroll();
-      document.getElementById("artifact-name").textContent = state.artifactName;
+      document.title = state.reviewName + " · Blueprint";
+      document.getElementById("artifact-name").textContent = state.reviewName;
       if (state.status === "ended") {
         if (isApprovedReview()) showApprovedCompletion();
         else retireReview();
@@ -1250,7 +1245,6 @@ export function renderReviewShell(reviewToken, nonce) {
     document.getElementById("collapse-inspector").addEventListener("click", () => app.classList.add("inspector-closed"));
     document.getElementById("expand-inspector").addEventListener("click", () => app.classList.remove("inspector-closed"));
     revealButton.addEventListener("click", reveal);
-    closeReviewTabButton.addEventListener("click", closeReviewTab);
     viewApprovedReviewButton.addEventListener("click", openApprovedReview);
     readonlyBackButton.addEventListener("click", showApprovedCompletion);
     approveButton.addEventListener("click", () => submitReview("approve"));
