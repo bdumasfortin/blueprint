@@ -2,15 +2,26 @@
 
 Notable public changes to Blueprint are recorded here. Version numbers follow Semantic Versioning.
 
-## [Unreleased]
+## [0.2.2] - 2026-09-03
 
 ### Added
 
 - Review tabs use the visible artifact title plus `· Blueprint`, fall back to the HTML filename, and display the approved Review aperture favicon.
+- Completion dialogs explicitly say that the user can close the tab after approving or ending a review.
+
+### Changed
+
+- Generated reviews follow the Ask-first brief: workspace name before the title, every decision previewed upfront, controls beside the relevant evidence, and supporting detail collapsed by default.
+- Agent playbooks and design guidance omit repeated conversation context unless it changes the decision. The canonical Beacon example demonstrates the new content contract.
 
 ### Removed
 
-- The ineffective post-approval **Close tab** action and its manual-close fallback. **View approved review** is now the sole completion action.
+- The ineffective post-approval **Close tab** button and scripted closing attempt. **View approved review** is the sole completion action; users can close the tab through their browser.
+
+### Compatibility
+
+- Packet and revision-report schemas are unchanged. Existing local sessions remain readable.
+- The minimum supported runtime remains Node.js 22; no runtime dependencies or agent configuration changes are introduced.
 
 ## [0.2.1] - 2026-09-02
 
@@ -48,5 +59,6 @@ Notable public changes to Blueprint are recorded here. Version numbers follow Se
 - Versioned agent playbooks, generated Codex skill discovery, and optional Codex and Claude Code SessionStart hooks.
 - Validation-gated packaging with Node 22/24 coverage across Windows and Linux.
 
+[0.2.2]: https://github.com/bdumasfortin/blueprint/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/bdumasfortin/blueprint/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/bdumasfortin/blueprint/releases/tag/v0.2.0

@@ -4,7 +4,7 @@ Last updated: 2026-09-03.
 
 ## Current state
 
-- The workspace is a Git repository on branch `codex/review-tab-identity`; the prior review-tab identity and Close tab removal are committed and pushed. `blueprint-local-review@0.2.1` remains the current public and locally installed AXI milestone, with npm `latest` pointing to it. The approved generated-content contract and completion hint are implemented and validated; the user has authorized committing and pushing them on this branch. Release and installation remain separate.
+- The workspace is on `main`, fast-forwarded to include the approved review-tab identity, Ask-first content contract, and completion hint. The user authorized preparing, publishing, and installing `blueprint-local-review@0.2.2` from `main`. Version 0.2.1 remains public and installed until the exact-package release gates complete.
 - The user explicitly approved the minimum credible architecture and authorized local implementation of its exact first vertical slice on 2026-08-28.
 - `docs/ARCHITECTURE.md` is the approved protocol, persistence, authority, security, and deferral contract.
 - The minimum slice is implemented with Node.js built-ins only. There are no runtime package dependencies and no copied Lavish implementation files.
@@ -63,7 +63,7 @@ Last updated: 2026-09-03.
 
 ## Validation completed
 
-`npm run check` passes thirty-five executable checks and enforces minimum coverage of 90% lines, 65% branches, and 90% functions. The Node 24 run observed 92.78% lines, 72.39% branches, and 94.58% functions. The checks cover:
+`npm run check` passes thirty-six executable checks and enforces minimum coverage of 90% lines, 65% branches, and 90% functions. The Node 24 run observed 92.80% lines, 72.39% branches, and 94.58% functions. The checks cover:
 
 - atomic replacement interruption;
 - canonical HTML and state path boundaries;
@@ -185,7 +185,7 @@ Do not implement these merely because the core exists. The user explicitly ident
 
 ## Recommended next action
 
-The Ask-first implementation, canonical Beacon example, and completion hint are ready for branch review. Seek explicit direction before release or installation; the installed `0.2.1` guidance has not changed. Treat npm releases and their Git tags as immutable; distributing the new guidance requires a new version and the same exact-package validation sequence.
+Complete the authorized 0.2.2 release from `main`: validate and review the exact tarball, require Windows/Linux × Node 22/24 CI, publish those unchanged bytes, verify registry integrity, install the public package, preserve the existing agent configuration, and verify the restarted local service. Treat npm releases and their Git tags as immutable; stop on any failed gate rather than silently repacking.
 
 ## Resume checks
 
