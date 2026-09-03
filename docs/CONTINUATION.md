@@ -189,6 +189,8 @@ Do not implement these merely because the core exists. The user explicitly ident
 
 Use published and installed `0.2.2` in real review sessions and let observed friction drive the next focused change. Treat npm releases and Git tags as immutable; any further distributed change requires a new version and the same exact-package validation sequence.
 
+Release cleanup is incomplete: the tool safety policy rejected removal of the agent-created test folder `D:\GIT\.codex-worktrees\blueprint-release-0.2.2-20260903`. It contains only this release's isolated package installations, isolated hook configurations, browser-test state, and QA helpers. The installed service imports the global package and does not depend on this folder. Preserve it until deletion can be authorized through the available tooling; the reviewed tarball and review evidence remain separately under ignored `.blueprint/`.
+
 ## Resume checks
 
 ```sh
