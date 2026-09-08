@@ -12,7 +12,7 @@ These instructions apply to the entire repository unless a more specific `AGENTS
 
 - Blueprint's minimum credible core is approved, implemented locally, and undergoing direct user testing. Broader product mechanisms remain in discovery.
 - Do not expand beyond the approved core merely because deferred steps are documented.
-- Before consequential product, UX, architecture, dependency, protocol, persistence, or licensing decisions, present a recommendation, alternatives, tradeoffs, risks, and unknowns for explicit review.
+- For unresolved consequential product, UX, architecture, dependency, protocol, persistence, or licensing decisions, present a recommendation, alternatives, tradeoffs, risks, and unknowns for explicit approval before implementation. Existing user direction or approval is sufficient unless new evidence materially changes the decision; use the review workflow below to choose the appropriate surface.
 - Local prototypes and review artifacts are exploration. They do not authorize production implementation.
 - The product name is **Blueprint**. Do not restart naming work unless the user asks.
 
@@ -52,18 +52,23 @@ Exclude from authored artifacts unless a later review reverses the decision: lay
 
 ## Review workflow
 
-- Use Lavish for non-trivial product, UX, architecture, or implementation plans intended for user review.
-- Use a fresh artifact for each new review iteration. Do not reopen a concluded session as a shortcut.
+- Use Blueprint only when the user explicitly requests it, or an unresolved consequential decision needs their judgment and visual or structured review would materially help.
+- Otherwise, proceed with authorized work and concise chat updates. Task size, complexity, or a work plan alone does not justify a review. Do not manufacture choices or request approval again for settled direction.
+- Ask necessary questions in chat when a short exchange suffices. Batch related questions and continue independent authorized work while awaiting input.
+
+When using Blueprint:
+
+- Use a fresh artifact and session for each new review, and continue revisions in that session. Do not reopen a concluded session as a shortcut.
 - Carry settled decisions forward visibly and do not ask them again without new evidence.
 - Every decision that asks the reviewer to choose must provide an operable labelled form when controls are useful: radios for mutually exclusive options, checkboxes or switches for independent choices, and selects for longer lists. Prefer selectable option cards backed by native inputs over click-only containers.
 - Every decision form must keep edits local until the reviewer chooses **Queue response**. Use a unique safe form `id`, `data-blueprint-response`, meaningful control names and values, and one submit action. Queue exactly one private Feedback draft per form; re-queueing replaces that unsent draft and never auto-sends or auto-ends the session.
 - UI examples and wireframes must demonstrate decision-relevant states, transitions, or microinteractions through keyboard-operable HTML when behavior affects the choice. Static specimens are acceptable only when interaction is irrelevant; motion must be restrained and honor `prefers-reduced-motion`.
 - Give the reviewer an explicit submission path. A browser-local selection is not feedback or authorization.
-- Launch with `blueprint review <artifact.html>` so opening and the first tracked feedback wait are one attached action; do not end the turn while it is waiting. Use separate `open` and `wait` commands only for recovery or diagnostics, and never create concurrent waits.
+- Launch with `blueprint review <artifact.html> --browser chrome` so opening and the first tracked feedback wait are one attached action; do not end the turn while it is waiting. Use separate `open` and `wait` commands only for recovery or diagnostics, and never create concurrent waits.
 - Validate review contracts and visually inspect wide, narrow, light/dark where applicable before opening the review.
 - Do not estimate development duration.
 
-## Engineering expectations once implementation is approved
+## Engineering expectations for authorized implementation
 
 - Prefer a small, explicit architecture with durable state and protocol contracts over inheriting Lavish wholesale.
 - Write behavior contracts and tests before choosing which upstream components, if any, to reuse.
