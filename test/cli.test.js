@@ -138,7 +138,8 @@ test("an attached CLI wait reconnects after service death at the same browser ad
   const url=opened.stdout.trim();const before=JSON.parse(await readFile(path.join(stateDir,"server.json"),"utf8"));
   attached=runAttached(["wait",artifact],{env});
   await waitUntil(()=>/wait_pid:/.test(attached.stderr()),"Wait did not attach");
-  await delay(80);process.kill(before.pid);
+  // Exercise abrupt service death; SIGTERM gracefully drains Linux long polls.
+  await delay(80);process.kill(before.pid, "SIGKILL");
   let after;
   for(let i=0;i<160;i++) {
     try{after=JSON.parse(await readFile(path.join(stateDir,"server.json"),"utf8"));if(after.pid!==before.pid)break;}catch{}

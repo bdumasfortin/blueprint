@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -9,8 +9,10 @@ import { bindReview, reviewGuard, interruptReview, assertReviewOwner, claimWaite
 async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), "blueprint-connection-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  const artifact = path.join(root, "review.html");
-  await writeFile(artifact, "<!doctype html><h1>Review</h1>");
+  const requestedArtifact = path.join(root, "review.html");
+  await writeFile(requestedArtifact, "<!doctype html><h1>Review</h1>");
+  // Match CLI bindings, including Windows runners whose temp path uses 8.3 names.
+  const artifact = await realpath(requestedArtifact);
   const store = new SessionStore(root);
   const opened = await store.openArtifact(artifact);
   const options = { stateDir: root };
