@@ -6,7 +6,7 @@ This contract defines the first usable Blueprint vertical slice. It is intention
 
 ## Approved shape
 
-- One Node.js process bound to `127.0.0.1` on an ephemeral port.
+- One Node.js process bound to `127.0.0.1`, initially on an ephemeral port and subsequently reusing the recorded listener address for recovery.
 - A framework-free trusted browser shell with a docked review inspector.
 - The reviewed artifact in an iframe sandbox that does not receive same-origin authority.
 - Per-session JSON manifests and immutable revision, packet, and agent-report files.
@@ -16,6 +16,8 @@ This contract defines the first usable Blueprint vertical slice. It is intention
 - Node.js built-ins only. No runtime packages and no copied Lavish implementation code.
 
 The reviewed HTML file remains the editable, portable source of truth. Each opened or staged revision is copied into an immutable session snapshot so the reviewer can always see the exact evidence associated with a feedback cycle.
+
+The approved 2026-09-04 [review connection extension](REVIEW_CONNECTION.md) adds token-free task/session ownership sidecars, short Codex Stop/Interrupt hooks, single-waiter ownership in the service, exact-session delivery, and a terminal End review result. It does not change artifact sandboxing or packet/report schemas. `listener.json` stores the reusable port; `preferences.json` stores the optional browser choice; `connections/` stores integration ownership, interruption, and bounded-continuation records. Manifest replacement retries transient Windows read locks with a strict bound.
 
 ## First vertical slice
 

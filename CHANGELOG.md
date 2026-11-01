@@ -2,6 +2,15 @@
 
 Notable public changes to Blueprint are recorded here. Version numbers follow Semantic Versioning.
 
+## [0.2.3] - 2026-11-01
+
+- Fix review creation falsely treating JavaScript `createObjectURL`/`revokeObjectURL` calls as external CSS resources. Artifact validation failures now return an actionable `400/invalid_artifact` response instead of a generic internal error.
+- Explicit Chrome/default browser selection, optional saved preference, and launch diagnostics that preserve the feedback wait when opening fails.
+- Codex review ownership, opt-in Stop continuation and Interrupt handling, and bounded recovery when a task repeatedly finishes before its review does.
+- Single-waiter enforcement, exact-session reattachment, bounded transport recovery, and a distinct terminal result for End review without feedback.
+- Stable loopback listener recovery and bounded retries for transient Windows snapshot-replacement locks.
+- Clear tool-session polling guidance after launch and staging. Hook configuration status explicitly does not claim trust or live execution.
+
 ## [0.2.2] - 2026-09-03
 
 ### Added

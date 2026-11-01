@@ -1,4 +1,14 @@
 const MAX_ARTIFACT_BYTES = 10 * 1024 * 1024;
+
+export class ArtifactValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ArtifactValidationError";
+    this.status = 400;
+    this.code = "invalid_artifact";
+  }
+}
+
 const TITLE_ENTITIES = new Map([
   ["amp", "&"],
   ["apos", "'"],
@@ -49,7 +59,7 @@ function isEmbeddedReference(value) {
 export function assertSelfContainedHtml(contents) {
   const bytes = Buffer.byteLength(contents);
   if (bytes > MAX_ARTIFACT_BYTES) {
-    throw new Error("Artifact exceeds the 10 MB first-slice limit.");
+    throw new ArtifactValidationError("Artifact exceeds the 10 MB first-slice limit.");
   }
 
   const references = [];
@@ -71,7 +81,8 @@ export function assertSelfContainedHtml(contents) {
     if (!isEmbeddedReference(match[2])) references.push(match[2]);
   }
 
-  const cssUrlPattern = /url\(\s*(["']?)(.*?)\1\s*\)/gi;
+  // Match the CSS function, not the suffix of createObjectURL/revokeObjectURL.
+  const cssUrlPattern = /\burl\(\s*(["']?)(.*?)\1\s*\)/gi;
   for (const match of contents.matchAll(cssUrlPattern)) {
     if (!isEmbeddedReference(match[2])) references.push(match[2]);
   }
@@ -82,7 +93,7 @@ export function assertSelfContainedHtml(contents) {
   }
 
   if (references.length > 0) {
-    throw new Error(
+    throw new ArtifactValidationError(
       `The first Blueprint slice accepts self-contained HTML only; external resource found: ${references[0]}`,
     );
   }

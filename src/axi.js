@@ -188,6 +188,7 @@ export async function renderHookContext(agent, options = {}) {
   if (stateError) lines.push(`live_state_error: ${stateError}; run \`blueprint\` for structured recovery guidance`);
   if (model.truncated > 0) lines.push(`- ${model.truncated} more active reviews; run \`blueprint --full\``);
   lines.push("When a review is requested, run `blueprint playbook`, then use `blueprint review <artifact.html>` so opening and the first feedback wait stay one attached action. Use `blueprint wait` only to recover or reattach.");
+  if (agent === "codex") lines.push("An exec session ID means the review command is still running: keep polling the same tool session, including after staging. The optional Stop guard helps recover early finishes only when Codex trusts it; honor explicit user interruptions. Use --browser chrome when Chrome is requested; ordinary launching does not require its control extension.");
   const additionalContext = lines.join("\n");
   return JSON.stringify({
     hookSpecificOutput: {

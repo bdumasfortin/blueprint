@@ -36,12 +36,22 @@ function expectedGroup(agent) {
   };
 }
 
+function expectedEvents(agent) {
+  const events = {SessionStart: expectedGroup(agent)};
+  if (agent === "codex") {
+    for (const [event, operation] of [["Stop", "guard"], ["Interrupt", "interrupt"]]) {
+      events[event] = {hooks: [{type:"command", command:`blueprint hook ${operation} --agent codex`, commandWindows:`blueprint hook ${operation} --agent codex`, timeout:3, statusMessage:`Blueprint review ${operation}`} ]};
+    }
+  }
+  return events;
+}
+
 function isBlueprintHandler(handler) {
   if (!handler || typeof handler !== "object") return false;
-  if (handler.statusMessage !== STATUS_MESSAGE) return false;
+  if (![STATUS_MESSAGE, "Blueprint review guard", "Blueprint review interrupt"].includes(handler.statusMessage)) return false;
   const args = Array.isArray(handler.args) ? handler.args.join(" ") : "";
   return `${handler.command || ""} ${handler.commandWindows || ""} ${args}`.includes("blueprint")
-    && `${handler.command || ""} ${handler.commandWindows || ""} ${args}`.includes("hook context");
+    && /hook (context|guard|interrupt)/.test(`${handler.command || ""} ${handler.commandWindows || ""} ${args}`);
 }
 
 function sameJson(left, right) {
@@ -51,29 +61,25 @@ function sameJson(left, right) {
 function removeBlueprintHandlers(document) {
   const next = structuredClone(document);
   if (!next.hooks || typeof next.hooks !== "object" || Array.isArray(next.hooks)) return next;
-  const groups = next.hooks.SessionStart;
-  if (!Array.isArray(groups)) return next;
-  const retained = groups
-    .map((group) => {
-      if (!group || typeof group !== "object" || !Array.isArray(group.hooks)) return group;
-      return { ...group, hooks: group.hooks.filter((handler) => !isBlueprintHandler(handler)) };
-    })
-    .filter((group) => !group || typeof group !== "object" || !Array.isArray(group.hooks) || group.hooks.length > 0);
-  if (retained.length === 0) delete next.hooks.SessionStart;
-  else next.hooks.SessionStart = retained;
+  for (const event of ["SessionStart", "Stop", "Interrupt"]) {
+    const groups = next.hooks[event];
+    if (!Array.isArray(groups)) continue;
+    const retained = groups
+      .map((group) => {
+        if (!group || typeof group !== "object" || !Array.isArray(group.hooks)) return group;
+        return { ...group, hooks: group.hooks.filter((handler) => !isBlueprintHandler(handler)) };
+      })
+      .filter((group) => !group || typeof group !== "object" || !Array.isArray(group.hooks) || group.hooks.length > 0);
+    if (retained.length === 0) delete next.hooks[event];
+    else next.hooks[event] = retained;
+  }
   return next;
 }
 
 function integrationState(document, agent) {
-  const groups = document?.hooks?.SessionStart;
-  if (!Array.isArray(groups)) return "absent";
-  const expected = expectedGroup(agent);
-  for (const group of groups) {
-    if (sameJson(group, expected)) return "installed";
-  }
-  for (const group of groups) {
-    if (Array.isArray(group?.hooks) && group.hooks.some(isBlueprintHandler)) return "stale";
-  }
+  const expected = expectedEvents(agent);
+  if (Object.entries(expected).every(([event, group]) => document?.hooks?.[event]?.some(candidate => sameJson(candidate,group)))) return "installed";
+  if (Object.values(document?.hooks ?? {}).some(groups => Array.isArray(groups) && groups.some(group => Array.isArray(group?.hooks) && group.hooks.some(isBlueprintHandler)))) return "stale";
   return "absent";
 }
 
@@ -87,8 +93,8 @@ async function readConfig(target) {
     if (parsed.hooks !== undefined && (!parsed.hooks || typeof parsed.hooks !== "object" || Array.isArray(parsed.hooks))) {
       throw new Error("`hooks` must be an object");
     }
-    if (parsed.hooks?.SessionStart !== undefined && !Array.isArray(parsed.hooks.SessionStart)) {
-      throw new Error("`hooks.SessionStart` must be an array");
+    for (const event of ["SessionStart", "Stop", "Interrupt"]) {
+      if (parsed.hooks?.[event] !== undefined && !Array.isArray(parsed.hooks[event])) throw new Error(`hooks.${event} must be an array`);
     }
     return { document: parsed, exists: true };
   } catch (error) {
@@ -132,8 +138,10 @@ export async function manageHooks(operation, options = {}) {
     if (operation === "install") {
       next = removeBlueprintHandlers(next);
       if (!next.hooks) next.hooks = {};
-      if (!Array.isArray(next.hooks.SessionStart)) next.hooks.SessionStart = [];
-      next.hooks.SessionStart.push(expectedGroup(agent));
+      for (const [event, group] of Object.entries(expectedEvents(agent))) {
+        if (!Array.isArray(next.hooks[event])) next.hooks[event] = [];
+        next.hooks[event].push(group);
+      }
     } else if (operation === "remove") {
       next = removeBlueprintHandlers(next);
     } else if (operation !== "status") {
@@ -147,6 +155,7 @@ export async function manageHooks(operation, options = {}) {
       changed,
       config: target,
       previousState: beforeState,
+      trust: agent === "codex" ? "not checked; review changed hooks in Codex /hooks" : "runtime execution not checked",
     });
   }
   return results;

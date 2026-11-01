@@ -5,6 +5,33 @@ import path from "node:path";
 import test from "node:test";
 
 import { startBlueprintServer } from "../src/server.js";
+import { bindReview } from "../src/connections.js";
+
+test("wait leases reject rivals, retain exact sessions, and release only their own claim", async t => {
+  const root=await mkdtemp(path.join(tmpdir(),"blueprint-wait-lease-"));t.after(()=>rm(root,{recursive:true,force:true}));
+  const artifact=path.join(root,"artifact.html");await writeFile(artifact,"<!doctype html><h1>Lease</h1>");
+  const running=await startBlueprintServer({stateDir:path.join(root,"state"),port:0});t.after(()=>running.close());
+  const opened=await running.store.openArtifact(artifact);
+  await bindReview({stateDir:running.stateDir},{sessionId:opened.sessionId,artifactPath:artifact,taskId:"owner"});
+  async function wait(id,taskId="owner",sessionId=opened.sessionId){
+    const query=new URLSearchParams({artifactPath:artifact,sessionId,timeoutMs:"0",waiterId:id,pid:String(process.pid),taskId});
+    return fetch(`${running.origin}/api/admin/wait?${query}`,{headers:{authorization:`Bearer ${running.adminToken}`}});
+  }
+  assert.equal((await wait("first")).status,204);
+  assert.equal((await wait("second")).status,409);
+  assert.equal((await wait("first","rival")).status,409);
+  const release=async id=>fetch(`${running.origin}/api/admin/release-wait`,{method:"POST",headers:{authorization:`Bearer ${running.adminToken}`,"content-type":"application/json"},body:JSON.stringify({sessionId:opened.sessionId,waiterId:id})});
+  await release("second");assert.equal((await wait("second")).status,409);
+  await release("first");assert.equal((await wait("second")).status,204);
+  const approval=await running.store.sendPacket(opened.reviewToken,{intent:"approve"});
+  const next=await running.store.openArtifact(artifact);
+  assert.notEqual(next.sessionId,opened.sessionId);
+  assert.equal((await (await wait("second")).json()).id,approval.id);
+  await running.store.acknowledgePacket(opened.sessionId,approval.id);
+  assert.equal((await (await wait("second")).json()).type,"review-ended");
+  const otherArtifact=path.join(root,"other.html");await writeFile(otherArtifact,"<!doctype html><h1>Other</h1>");
+  await assert.rejects(running.store.deliveryManifest(otherArtifact,opened.sessionId),/does not match/);
+});
 
 async function jsonRequest(url, options = {}) {
   return fetch(url, {
@@ -15,6 +42,58 @@ async function jsonRequest(url, options = {}) {
     },
   });
 }
+
+test("artifact validation failures are actionable and object URL helpers open and stage", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "blueprint-validation-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const artifact = path.join(root, "artifact.html");
+  const errors = [];
+  const running = await startBlueprintServer({
+    stateDir: path.join(root, "state"),
+    logger: { error: (error) => errors.push(error) },
+  });
+  t.after(() => running.close());
+  const post = (route) => jsonRequest(`${running.origin}/api/admin/${route}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${running.adminToken}` },
+    body: JSON.stringify({ artifactPath: artifact }),
+  });
+  await writeFile(artifact, '<script src="./app.js"></script>');
+  const invalidOpen = await post("open");
+  assert.equal(invalidOpen.status, 400);
+  assert.deepEqual(await invalidOpen.json(), {
+    code: "invalid_artifact",
+    error: "The first Blueprint slice accepts self-contained HTML only; external resource found: ./app.js",
+  });
+  const valid = '<!doctype html><script>const url = URL.createObjectURL(file); URL.revokeObjectURL(url);</script>';
+  await writeFile(artifact, valid);
+  const opened = await post("open");
+  assert.equal(opened.status, 200);
+  const { reviewToken, visibleRevision } = await opened.json();
+  await writeFile(artifact, '<style>body { background: url(./image.png); }</style>');
+  const invalidStage = await post("stage");
+  assert.equal(invalidStage.status, 400);
+  assert.equal((await invalidStage.json()).code, "invalid_artifact");
+  const state = await running.store.getBrowserState(reviewToken);
+  assert.equal(state.visibleRevision.id, visibleRevision.id);
+  assert.equal(state.stagedRevision, null);
+  await writeFile(artifact, `${valid}<h1>Revision</h1>`);
+  assert.equal((await post("stage")).status, 200);
+  await writeFile(artifact, "x".repeat(10 * 1024 * 1024 + 1));
+  const oversized = await post("open");
+  assert.equal(oversized.status, 400);
+  assert.match((await oversized.json()).error, /10 MB/);
+  assert.deepEqual(errors, []);
+
+  // Unexpected exceptions still stay private and go to the diagnostic logger.
+  running.store.openArtifact = async () => { throw new Error("private failure detail"); };
+  const unexpected = await post("open");
+  assert.equal(unexpected.status, 500);
+  assert.deepEqual(await unexpected.json(), {
+    code: "internal_error", error: "Blueprint encountered an internal error.",
+  });
+  assert.equal(errors[0].message, "private failure detail");
+});
 
 test("agent and reviewer authorities are separated and artifact routes are sandboxed", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "blueprint-server-"));

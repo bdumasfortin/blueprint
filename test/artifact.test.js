@@ -1,7 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { extractArtifactTitle } from "../src/artifact.js";
+import { assertSelfContainedHtml, extractArtifactTitle } from "../src/artifact.js";
+
+test("object URL helpers are not mistaken for CSS resource references", () => {
+  assert.doesNotThrow(() => assertSelfContainedHtml(`<!doctype html>
+    <script>
+      function download(file) {
+        const url = URL.createObjectURL(file);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    </script>
+    <style>body { background: url("data:image/png;base64,AA=="); }</style>
+  `));
+  for (const html of [
+    '<style>body { background: URL("./image.png"); }</style>',
+    '<div style="background:url(./image.png)"></div>',
+    '<style>@import "./theme.css";</style>',
+  ]) {
+    assert.throws(() => assertSelfContainedHtml(html), /external resource found/);
+  }
+});
 
 test("artifact titles decode common entities and collapse display whitespace", () => {
   assert.equal(

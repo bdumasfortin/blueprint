@@ -22,6 +22,10 @@ Blueprint should make visual review feel deliberate: the agent launches the requ
 
 ## Settled decisions
 
+### Review connection reliability
+
+On 2026-09-04 the user approved explicit Chrome launching and a Codex review guard, plus installation of the validated local candidate and its hooks on this computer. The exact behavior and validation contract is in [REVIEW_CONNECTION.md](REVIEW_CONNECTION.md). Ownership is tied to a Codex task and an exact Blueprint session; quiet polls and staged revisions do not permit completion. A Stop hook continues unfinished owned reviews, an Interrupt hook respects the human's stop, and repeated failed recovery reports a blocker. Only delivered approval authorizes the selected work. This approval includes reversible personal installation, preserves existing review state, and does not authorize public publication or Git provider changes.
+
 ### Audience and scope
 
 - One human, one agent, one artifact.

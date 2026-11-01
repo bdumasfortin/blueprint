@@ -1,6 +1,6 @@
 import { CliError, renderFields, renderList, renderTable } from "./axi.js";
 
-const PLAYBOOK_VERSION = 10;
+const PLAYBOOK_VERSION = 11;
 
 const PLAYBOOKS = Object.freeze([
   {
@@ -50,6 +50,10 @@ const PLAYBOOKS = Object.freeze([
     guidance: [
       "Treat the HTML file as authoritative and the served revision as immutable evidence.",
       "Run `blueprint review <artifact.html>` as the default launch. It opens the artifact and keeps the same command attached until exactly one feedback packet is delivered. Do not end the turn while that command is still waiting.",
+      "When Chrome is requested, use `blueprint review <artifact.html> --browser chrome`. Normal launching does not require Codex's Chrome control extension. A blocked launch is not permission to abandon the feedback wait; report the failure and retain the recovery URL.",
+      "An exec tool returning a session ID means the command is still running. Keep calling write_stdin on that same session; if a functions.exec wrapper yields a cell ID, resume it with functions.wait first. Empty output and quiet long polls never mean the review is finished.",
+      "The opt-in Codex Stop guard checks exact task/session ownership. Honor WAIT_ALREADY_ATTACHED by resuming the existing tool session; never work around it with another waiter. Setup status reports configuration, not hook trust. A user interruption suspends the guard until an explicit Blueprint launch or reattachment.",
+      "A review-ended result is terminal cancellation, not approval. Queued approval must be delivered first. Reattach to an exact session with `blueprint wait <artifact.html> --session <session-id>` when recovering an older review.",
       "Use separate `blueprint open <artifact.html>` and `blueprint wait <artifact.html>` only to recover or diagnose an existing review; never run concurrent waits.",
       "Do not act on unsent browser drafts. Wait returns one immutable intent-bearing JSON packet and acknowledges only after complete delivery.",
       "Handle packet IDs idempotently because delivery is at least once.",
@@ -60,7 +64,7 @@ const PLAYBOOKS = Object.freeze([
       "Before staging, account for every revise packet used as a basis and report every revision comment in those packets. Decisions are typed basis inputs, not amendment items, and need no Accept/Reopen evidence. Use report schema version 2 with `basisPacketIds`; each addressed or changed comment needs `before`, `after`, `summary`, `evidence`, and the amended element's `selector`.",
       "Edit the authoritative HTML, then run `blueprint stage <artifact.html> --report <report.json>`. Staging opens a blocking ready curtain but never reveals the new snapshot.",
       "Only the reviewer may choose See latest revision, accept, reopen, approve, or end the session.",
-      "If the wait is interrupted, restart the same wait; never create concurrent waits for one review.",
+      "If a tool wait fails, recover it without creating concurrent waits. If the user explicitly interrupts, respect the interruption and reattach only when they resume the review. Bounded recovery exhaustion is a blocker to report, never approval or implementation authority.",
     ],
     next: [
       "Run `blueprint --help` for exact command syntax.",

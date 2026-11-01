@@ -62,7 +62,7 @@ test("the AXI CLI exposes playbooks, focused help, and loud structured option er
   assert.match(playbooks.stdout, /"review-loop"/);
 
   const artifactPlaybook = await run(["playbook", "artifact"]);
-  assert.match(artifactPlaybook.stdout, /playbook_version: 10/);
+  assert.match(artifactPlaybook.stdout, /playbook_version: 11/);
   assert.match(artifactPlaybook.stdout, /human-readable project or workspace name before the review title/);
   assert.match(artifactPlaybook.stdout, /complete preview of every decision, preference, or confirmation/);
   assert.match(artifactPlaybook.stdout, /Collapse supporting evidence and edge cases by default/);

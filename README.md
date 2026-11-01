@@ -43,6 +43,7 @@ blueprint setup hooks --agent claude
 ```
 
 Installation alone never edits agent configuration. Hook setup is explicit, reversible, and preserves unrelated settings.
+For Codex, review and trust the hooks with `/hooks`: the Stop guard keeps unfinished reviews attached, while Interrupt honors your stop. To use Chrome explicitly, your agent can save `blueprint setup browser chrome` or launch with `--browser chrome`.
 
 ## Use it
 

@@ -9,7 +9,7 @@ Blueprint is formally an **Agent eXperience Interface (AXI)**: its command-line 
 The approved target is:
 
 1. A globally installed npm package provides the durable local CLI and loopback review runtime.
-2. `blueprint setup hooks` explicitly installs or repairs compact SessionStart context for Codex and Claude Code.
+2. `blueprint setup hooks` explicitly installs or repairs compact SessionStart context for Codex and Claude Code; Codex additionally receives the approved Stop/Interrupt review guard.
 3. An `npx` path may later provide zero-setup evaluation, but persistent local sessions make a global installation the preferred repeated-use model.
 
 The public package is named `blueprint-local-review` and licensed MIT. Version 0.2.0 is the first public release. Publication requires the enforced coverage and package-boundary checks, isolated tarball installation, browser and recovery evidence, and an exact final review of the artifact to be published. The registry copy must match the reviewed tarball's integrity and checksum.
@@ -39,6 +39,7 @@ Blueprint applies the ten principles described at [axi.md](https://axi.md/) with
 - `blueprint review` is the default launch: it opens the artifact and keeps the same process attached until one intent-bearing feedback packet is printed and acknowledged.
 - `blueprint open` and `wait` preserve the same durable protocol as separate lower-level recovery and diagnostic commands; `stage` owns revision preparation.
 - `blueprint setup hooks|status|remove` owns optional agent integration.
+- `blueprint setup browser chrome|default` saves the browser preference; `--browser` and `BLUEPRINT_BROWSER` override it. Normal Chrome launching is independent of the Codex Chrome control extension.
 
 The versioned playbooks are:
 
@@ -47,6 +48,8 @@ The versioned playbooks are:
 - `review-loop` for one tracked wait, immutable approve/revise packet delivery, multi-batch revision reports, staged revision handling, and reviewer-only completion.
 
 AXI contract version 2 removes the procedural seam between initial launch and the first feedback wait. `blueprint review <artifact.html>` writes the reviewer URL and waiting status to standard error, keeps standard output clean for the exact packet JSON, survives quiet long-poll timeouts, and exits only after delivering one packet. This is additive: existing `open` and `wait` scripts remain valid.
+
+The 2026-09-04 connection extension is specified in [REVIEW_CONNECTION.md](REVIEW_CONNECTION.md). A wait can also end with `{ "type": "review-ended", "sessionId": "...", "status": "ended" }` when the reviewer ends it without queued feedback; that result is never approval. `--session` pins recovery to an exact review. A yielded exec-session ID requires continued polling of that same tool session, not another CLI waiter. Browser failures are diagnostic standard error and retain the review URL and wait.
 
 ## Intent-bearing review contract
 
@@ -70,7 +73,7 @@ blueprint setup remove --agent all
 
 `--agent all` is the default. `--config-home <directory>` exists for isolated testing and controlled alternate homes.
 
-For Codex, Blueprint merges one `SessionStart` group into `~/.codex/hooks.json` (or the active `CODEX_HOME`). Codex requires the user to review and trust non-managed hooks with `/hooks`; Blueprint does not bypass that trust gate. See the [official Codex hooks documentation](https://developers.openai.com/codex/hooks).
+For Codex, Blueprint merges one group each for `SessionStart`, `Stop`, and `Interrupt` into `~/.codex/hooks.json` (or the active `CODEX_HOME`). The latter two invoke `blueprint hook guard --agent codex` and `blueprint hook interrupt --agent codex`. Codex requires the user to review and trust non-managed hooks with `/hooks`; Blueprint does not bypass that trust gate. Setup reports configuration only, not verified trust or execution. See the [official Codex hooks documentation](https://learn.chatgpt.com/docs/hooks).
 
 For Claude Code, Blueprint merges one `SessionStart` group into `~/.claude/settings.json` (or `CLAUDE_CONFIG_DIR`). See the [official Claude Code hooks reference](https://code.claude.com/docs/en/hooks).
 

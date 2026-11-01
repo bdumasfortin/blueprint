@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback, spawn } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -16,9 +16,12 @@ const repositoryRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)
 const executable = path.join(repositoryRoot, "bin", "blueprint.js");
 
 function runAttached(args, options = {}) {
-  const child = spawn(process.execPath, [executable, ...args], {
+  const overrides = new Set(Object.keys(options.env ?? {}).map(key=>key.toLowerCase()));
+  const inherited = Object.fromEntries(Object.entries(process.env).filter(([key])=>!overrides.has(key.toLowerCase())));
+  const runner = options.runner ?? [executable];
+  const child = spawn(process.execPath, [...runner, ...args], {
     cwd: options.cwd ?? repositoryRoot,
-    env: { ...process.env, ...options.env },
+    env: { ...inherited, ...options.env },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let stdout = "";
@@ -34,6 +37,7 @@ function runAttached(args, options = {}) {
       else reject(new Error(`Attached CLI exited ${code}: ${stderr || stdout}`));
     });
   });
+  completed.catch(() => {});
   return { child, completed, stdout: () => stdout, stderr: () => stderr };
 }
 
@@ -64,6 +68,86 @@ test("the feedback wait survives a quiet request timeout", async () => {
   });
   assert.equal(attempts, 2);
   assert.equal(delivered, packet);
+});
+
+test("quiet polls and recoverable connection loss retain exact review identity", async () => {
+  let attempts=0, reconnects=0, delivered;
+  const ended={type:"review-ended",sessionId:"exact-session",status:"ended"};
+  await waitForPacketDelivery({},"artifact",{
+    sessionId:"exact-session",waiterId:"waiter",pid:process.pid,taskId:"task",retryDelayMs:1,
+    requestPacket:async (_record,route)=>{
+      assert.match(route,/sessionId=exact-session/);attempts++;
+      if(attempts===1) throw new TypeError("fetch failed");
+      if(attempts<4) return null;
+      return ended;
+    },reconnect:async()=>{reconnects++;return {};},deliverEnd:async result=>{delivered=result;},
+  });
+  assert.equal(reconnects,1);assert.equal(attempts,4);assert.equal(delivered,ended);
+  let failures=0;
+  await assert.rejects(waitForPacketDelivery({},"artifact",{retryDelayMs:1,requestPacket:async()=>{failures++;throw new TypeError("offline");},reconnect:async()=>({})}),/offline/);
+  assert.equal(failures,4);
+});
+
+test("Chrome launch failure retains the attached review until End review", async t => {
+  const root=await mkdtemp(path.join(tmpdir(),"blueprint-launch-failure-"));
+  let running,attached;
+  t.after(async()=>{if(attached?.child.exitCode===null) attached.child.kill();await attached?.completed.catch(()=>{});await running?.close();await rm(root,{recursive:true,force:true});});
+  const artifact=path.join(root,"artifact.html");await writeFile(artifact,"<!doctype html><h1>Launch recovery</h1>");
+  running=await startBlueprintServer({stateDir:path.join(root,"state"),port:0});
+  attached=runAttached(["review",artifact,"--browser","chrome"],{env:{BLUEPRINT_STATE_DIR:running.stateDir},runner:["--input-type=module","-e","import {runCli} from './src/cli.js'; await runCli(process.argv.slice(1),{launchBrowser:async()=>{throw new Error('Simulated browser startup denial')}});"]});
+  await waitUntil(()=>/review_url:/.test(attached.stderr()),"Review did not survive browser launch failure");
+  assert.match(attached.stderr(),/browser_error:/);
+  assert.equal(attached.child.exitCode,null);
+  const manifest=await running.store.deliveryManifest(artifact);
+  await running.store.endSession(manifest.reviewToken);
+  const result=await attached.completed;
+  assert.equal(JSON.parse(result.stdout).type,"review-ended");
+  assert.equal((await running.store.loadManifest(manifest.sessionId)).packets.length,0);
+});
+
+test("the CLI configures browser preference and emits Codex guard/interrupt JSON", async t => {
+  const root=await mkdtemp(path.join(tmpdir(),"blueprint-hook-cli-"));t.after(()=>rm(root,{recursive:true,force:true}));
+  const artifact=path.join(root,"review.html");await writeFile(artifact,"<!doctype html><h1>Hook</h1>");
+  const running=await startBlueprintServer({stateDir:path.join(root,"state"),port:0});t.after(()=>running.close());
+  const env={...process.env,BLUEPRINT_STATE_DIR:running.stateDir,CODEX_THREAD_ID:"hook-test-task"};
+  await execFile(process.execPath,[executable,"setup","browser","chrome"],{env});
+  await execFile(process.execPath,[executable,"open",artifact,"--no-open"],{env});
+  async function hook(operation){
+    const child=spawn(process.execPath,[executable,"hook",operation,"--agent","codex"],{env,stdio:["pipe","pipe","pipe"]});
+    let out="";child.stdout.on("data",b=>out+=b);
+    const complete=new Promise((resolve,reject)=>{child.once("error",reject);child.once("close",code=>code===0?resolve(JSON.parse(out)):reject(new Error(out)));});
+    child.stdin.end(JSON.stringify({session_id:"hook-test-task"}));return complete;
+  }
+  assert.equal((await hook("guard")).decision,"block");
+  assert.deepEqual(await hook("interrupt"),{});
+  assert.deepEqual(await hook("guard"),{});
+});
+
+test("an attached CLI wait reconnects after service death at the same browser address", async t => {
+  const root=await mkdtemp(path.join(tmpdir(),"blueprint-live-reconnect-"));
+  const stateDir=path.join(root,"state");const artifact=path.join(root,"review.html");
+  let attached;
+  t.after(async()=>{
+    if(attached?.child.exitCode===null) attached.child.kill();await attached?.completed.catch(()=>{});
+    try{const record=JSON.parse(await readFile(path.join(stateDir,"server.json"),"utf8"));process.kill(record.pid);}catch{}
+    await rm(root,{recursive:true,force:true});
+  });
+  await writeFile(artifact,"<!doctype html><h1>Reconnect</h1>");
+  const env={...process.env,BLUEPRINT_STATE_DIR:stateDir};
+  const opened=await execFile(process.execPath,[executable,"open",artifact,"--no-open"],{env});
+  const url=opened.stdout.trim();const before=JSON.parse(await readFile(path.join(stateDir,"server.json"),"utf8"));
+  attached=runAttached(["wait",artifact],{env});
+  await waitUntil(()=>/wait_pid:/.test(attached.stderr()),"Wait did not attach");
+  await delay(80);process.kill(before.pid);
+  let after;
+  for(let i=0;i<160;i++) {
+    try{after=JSON.parse(await readFile(path.join(stateDir,"server.json"),"utf8"));if(after.pid!==before.pid)break;}catch{}
+    await delay(50);
+  }
+  assert.notEqual(after.pid,before.pid);assert.equal(after.port,before.port);
+  const token=new URL(url).pathname.split("/").at(-1);
+  await api(`http://127.0.0.1:${after.port}/api/session/${token}/end`,{method:"POST",body:"{}"});
+  assert.equal(JSON.parse((await attached.completed).stdout).type,"review-ended");
 });
 
 test("review atomically opens and stays attached until one packet is delivered", async (t) => {

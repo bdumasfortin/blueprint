@@ -3,10 +3,11 @@ import { EventEmitter } from "node:events";
 import { rm } from "node:fs/promises";
 import { createServer } from "node:http";
 
-import { injectAnnotationSdk } from "./artifact.js";
+import { ArtifactValidationError, injectAnnotationSdk } from "./artifact.js";
 import { atomicWriteJson, readJson } from "./atomic.js";
 import { getStateRoot, resolveInside } from "./paths.js";
 import { BlueprintError, SessionStore } from "./session-store.js";
+import { assertReviewOwner, claimWaiter } from "./connections.js";
 import { renderReviewShell } from "./ui.js";
 
 const MAX_BODY_BYTES = 1_000_000;
@@ -67,10 +68,10 @@ function hostIsLoopback(host) {
     || normalized === "localhost";
 }
 
-async function waitForPacket(store, artifactPath, timeoutMs, events) {
+async function waitForPacket(store, artifactPath, timeoutMs, events, sessionId = null) {
   const deadline = Date.now() + timeoutMs;
   while (true) {
-    const packet = await store.nextQueuedPacket(artifactPath);
+    const packet = await store.nextQueuedPacket(artifactPath, sessionId, {terminal:true});
     if (packet) return packet;
     const remaining = deadline - Date.now();
     if (remaining <= 0) return null;
@@ -96,6 +97,7 @@ export async function startBlueprintServer(options = {}) {
   const logger = options.logger ?? console;
   const store = options.store ?? new SessionStore(stateDir);
   const events = new EventEmitter();
+  const waiters = new Map();
   events.setMaxListeners(200);
   await store.initialize();
 
@@ -114,7 +116,7 @@ export async function startBlueprintServer(options = {}) {
         }
 
         if (request.method === "GET" && parts[2] === "health" && parts.length === 3) {
-          return sendJson(response, 200, { status: "ok", pid: process.pid });
+          return sendJson(response, 200, { status: "ok", pid: process.pid, reviewConnectionVersion: 1 });
         }
 
         if (request.method === "POST" && parts[2] === "open" && parts.length === 3) {
@@ -128,12 +130,31 @@ export async function startBlueprintServer(options = {}) {
 
         if (request.method === "GET" && parts[2] === "wait" && parts.length === 3) {
           const artifactPath = url.searchParams.get("artifactPath");
+          const sessionId = url.searchParams.get("sessionId");
+          const manifest = await store.deliveryManifest(artifactPath, sessionId);
+          const waiterId = url.searchParams.get("waiterId");
+          const taskId = url.searchParams.get("taskId");
+          await assertReviewOwner({stateDir}, manifest.sessionId, taskId).catch(error => { throw new BlueprintError(error.message, 409, error.code); });
+          if (waiterId) {
+            const pid = Number(url.searchParams.get("pid"));
+            if (!/^[a-zA-Z0-9_-]{1,160}$/.test(waiterId) || !Number.isInteger(pid) || pid <= 0) throw new BlueprintError("Invalid waiter identity.");
+            try { claimWaiter(waiters, manifest.sessionId, {id:waiterId, pid}); }
+            catch (error) { throw new BlueprintError(error.message, 409, error.code); }
+          } else if (waiters.has(manifest.sessionId)) {
+            throw new BlueprintError("A feedback wait already owns this review. Resume its existing tool session.", 409, "WAIT_ALREADY_ATTACHED");
+          }
           const requestedTimeout = Number(url.searchParams.get("timeoutMs") ?? 25_000);
           const timeoutMs = Number.isFinite(requestedTimeout)
             ? Math.max(0, Math.min(30_000, requestedTimeout))
             : 25_000;
-          const packet = await waitForPacket(store, artifactPath, timeoutMs, events);
+          const packet = await waitForPacket(store, artifactPath, timeoutMs, events, manifest.sessionId);
           return packet ? sendJson(response, 200, packet) : sendJson(response, 204, null);
+        }
+
+        if (request.method === "POST" && parts[2] === "release-wait" && parts.length === 3) {
+          const body = await readJsonBody(request);
+          if (waiters.get(body.sessionId)?.id === body.waiterId) waiters.delete(body.sessionId);
+          return sendJson(response, 200, {released: true});
         }
 
         if (request.method === "POST" && parts[2] === "ack" && parts.length === 3) {
@@ -228,7 +249,7 @@ export async function startBlueprintServer(options = {}) {
 
       throw new BlueprintError("Route was not found.", 404, "not_found");
     } catch (error) {
-      const known = error instanceof BlueprintError;
+      const known = error instanceof BlueprintError || error instanceof ArtifactValidationError;
       if (!known) logger.error?.(error);
       sendJson(response, known ? error.status : 500, {
         error: known ? error.message : "Blueprint encountered an internal error.",
@@ -245,6 +266,7 @@ export async function startBlueprintServer(options = {}) {
   origin = `http://127.0.0.1:${address.port}`;
 
   if (options.writeServerRecord !== false) {
+    await atomicWriteJson(resolveInside(stateDir, "listener.json"), {port: address.port});
     await atomicWriteJson(resolveInside(stateDir, "server.json"), {
       schemaVersion: 1,
       pid: process.pid,

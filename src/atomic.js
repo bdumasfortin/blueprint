@@ -31,7 +31,14 @@ export async function atomicWriteFile(target, contents, options = {}) {
     await handle.close();
     handle = null;
     await options.beforeRename?.(temporary, target);
-    await rename(temporary, target);
+    for (let attempt = 0; ; attempt += 1) {
+      try { await rename(temporary, target); break; }
+      catch (error) {
+        // Windows can briefly deny replacement while another process reads the snapshot.
+        if (process.platform !== "win32" || !["EPERM", "EBUSY", "EACCES"].includes(error.code) || attempt >= 5) throw error;
+        await new Promise(resolve => setTimeout(resolve, 10 * (attempt + 1)));
+      }
+    }
     await syncDirectory(directory);
   } catch (error) {
     await handle?.close().catch(() => {});

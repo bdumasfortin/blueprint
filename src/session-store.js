@@ -549,12 +549,19 @@ export class SessionStore {
     });
   }
 
-  async nextQueuedPacket(inputPath) {
+  async deliveryManifest(inputPath, sessionId = null) {
     await this.initialize();
     const canonicalPath = await canonicalArtifactPath(inputPath);
-    const manifest = await this.loadLatestForCanonical(canonicalPath);
+    const manifest = sessionId ? await this.loadManifest(sessionId) : await this.loadLatestForCanonical(canonicalPath);
+    if (manifest.artifactPath !== canonicalPath) throw new BlueprintError("Review session does not match the artifact.", 409, "session_mismatch");
+    return manifest;
+  }
+
+  async nextQueuedPacket(inputPath, sessionId = null, options = {}) {
+    const manifest = await this.deliveryManifest(inputPath, sessionId);
     const queued = manifest.packets.find((packet) => packet.status === "queued");
-    if (!queued) return null;
+    if (!queued) return options.terminal && manifest.status === "ended"
+      ? {type:"review-ended",sessionId:manifest.sessionId,status:"ended"} : null;
     return packetForDelivery(await readJson(this.packetPath(manifest, queued)));
   }
 

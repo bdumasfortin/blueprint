@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 import { readJson } from "./atomic.js";
 import {
@@ -19,26 +20,31 @@ import { getStateRoot, resolveInside } from "./paths.js";
 import { renderPlaybook, renderPlaybookIndex } from "./playbooks.js";
 import { startBlueprintServer } from "./server.js";
 import { manageHooks } from "./setup.js";
+import { SessionStore } from "./session-store.js";
+import { bindReview, codexTaskId, reviewGuard, interruptReview, assertReviewOwner } from "./connections.js";
+import { browserPreference, setBrowserPreference, launchBrowser } from "./browser.js";
 
 const executablePath = fileURLToPath(new URL("../bin/blueprint.js", import.meta.url));
 
 function helpText(command = null) {
   const commandHelp = {
-    review: `Usage: blueprint review <artifact.html> [--no-open] [--state-dir <directory>]
+    review: `Usage: blueprint review <artifact.html> [--browser chrome|default] [--no-open] [--state-dir <directory>]
 
 Open a self-contained HTML artifact and stay attached until one review packet arrives.
 The review URL and waiting state go to standard error; standard output remains exact packet JSON.
 This is the default agent workflow after the reviewer asks to launch Blueprint.
 `,
-    open: `Usage: blueprint open <artifact.html> [--no-open] [--state-dir <directory>]
+    open: `Usage: blueprint open <artifact.html> [--browser chrome|default] [--no-open] [--state-dir <directory>]
 
 Open the local reviewer surface without attaching a feedback wait.
 Prefer \`blueprint review\` for normal launches; use \`open\` for recovery or diagnostics.
 `,
-    wait: `Usage: blueprint wait <artifact.html> [--state-dir <directory>]
+    wait: `Usage: blueprint wait <artifact.html> [--session <session-id>] [--state-dir <directory>]
 
 Long-wait for one immutable feedback packet. Keep exactly one wait attached per review.
 The JSON packet is acknowledged only after complete standard-output delivery.
+An ended review with no queued feedback returns a distinct review-ended JSON result; it is not approval.
+When the tool yields an exec session ID, keep polling that same tool session. Quiet output is not completion.
 `,
     stage: `Usage: blueprint stage <artifact.html> [--report <report.json>] [--state-dir <directory>]
 
@@ -53,11 +59,14 @@ List versioned guidance or print one focused playbook. Open every matching playb
 Print Blueprint's current artifact visual authority.
 `,
     setup: `Usage: blueprint setup hooks|status|remove [--agent codex|claude|all] [--config-home <directory>]
+       blueprint setup browser chrome|default [--state-dir <directory>]
 
-hooks: add or repair one opt-in SessionStart context hook without replacing unrelated settings.
+hooks: add or repair opt-in SessionStart context; Codex also gets Stop and Interrupt review guards.
 status: inspect the supported agent configurations without changing them.
-remove: remove only Blueprint's SessionStart hook entries.
+remove: remove only Blueprint's hook entries.
+browser: save a local browser preference; --browser and BLUEPRINT_BROWSER override it.
 Restart the selected agent after a change. Codex requires reviewing and trusting changed hooks with /hooks.
+Installed/configured status does not verify Codex hook trust or execution.
 `,
     server: `Usage: blueprint server [--state-dir <directory>]
 
@@ -71,11 +80,12 @@ Usage:
   blueprint [--full]
   blueprint design
   blueprint playbook [playbook_id]
-  blueprint review <artifact.html> [--no-open]
-  blueprint open <artifact.html> [--no-open]
-  blueprint wait <artifact.html>
+  blueprint review <artifact.html> [--browser chrome|default] [--no-open]
+  blueprint open <artifact.html> [--browser chrome|default] [--no-open]
+  blueprint wait <artifact.html> [--session <session-id>]
   blueprint stage <artifact.html> [--report <report.json>]
   blueprint setup hooks|status|remove [--agent codex|claude|all]
+  blueprint setup browser chrome|default
   blueprint server [--state-dir <directory>]
 
 No arguments prints live directory-scoped review state. The first slice accepts
@@ -139,7 +149,7 @@ async function request(record, route, options = {}) {
     signal: options.signal ?? AbortSignal.timeout(35_000),
   });
   const payload = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new CliError("SERVICE_ERROR", payload?.error || `Blueprint service returned ${response.status}.`);
+  if (!response.ok) throw new CliError(payload?.code || "SERVICE_ERROR", payload?.error || `Blueprint service returned ${response.status}.`);
   return payload;
 }
 
@@ -174,23 +184,6 @@ async function ensureServer(stateDir) {
   });
 }
 
-function openBrowser(url) {
-  let command;
-  let args;
-  if (process.platform === "win32") {
-    command = "rundll32";
-    args = ["url.dll,FileProtocolHandler", url];
-  } else if (process.platform === "darwin") {
-    command = "open";
-    args = [url];
-  } else {
-    command = "xdg-open";
-    args = [url];
-  }
-  const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: true });
-  child.unref();
-}
-
 async function writePacketThenAcknowledge(record, packet) {
   await new Promise((resolve, reject) => {
     process.stdout.write(`${JSON.stringify(packet, null, 2)}\n`, (error) => error ? reject(error) : resolve());
@@ -212,6 +205,8 @@ export async function waitForPacketDelivery(record, artifactPath, options = {}) 
   const requestPacket = options.requestPacket ?? request;
   const deliverPacket = options.deliverPacket ?? writePacketThenAcknowledge;
   const query = new URLSearchParams({ artifactPath, timeoutMs: String(pollTimeoutMs) });
+  for (const key of ["sessionId", "waiterId", "pid", "taskId"]) if (options[key]) query.set(key, String(options[key]));
+  let failures = 0;
   while (true) {
     let packet;
     try {
@@ -221,11 +216,37 @@ export async function waitForPacketDelivery(record, artifactPath, options = {}) 
       });
     } catch (error) {
       if (isRequestTimeout(error)) continue;
+      if (error instanceof TypeError && options.reconnect && failures < 3) {
+        failures += 1;
+        await new Promise(resolve => setTimeout(resolve, options.retryDelayMs ?? 500));
+        record = await options.reconnect();
+        continue;
+      }
       throw error;
     }
+    failures = 0;
     if (!packet) continue;
+    if (packet.type === "review-ended") {
+      if (options.deliverEnd) await options.deliverEnd(packet);
+      else process.stdout.write(`${JSON.stringify(packet)}\n`);
+      return packet;
+    }
     await deliverPacket(record, packet);
     return packet;
+  }
+}
+
+async function attachWait(record, artifactPath, stateDir, sessionId, taskId) {
+  const waiterId = randomUUID();
+  try {
+    const health = await request(record, "/api/admin/health", {method:"GET"});
+    if (health.reviewConnectionVersion !== 1) throw new CliError("SERVICE_UPGRADE_REQUIRED", "The running Blueprint service predates review connection guards. Restart it from the installed build while preserving active reviews, then reattach.");
+    process.stderr.write(`${renderFields([["wait_session",sessionId],["wait_pid",process.pid],["instruction","Keep polling this exec session when the tool yields a session ID. Quiet output is not completion; do not send a final answer while this wait is active."]])}\n`);
+    return await waitForPacketDelivery(record, artifactPath, {sessionId,waiterId,pid:process.pid,taskId,
+      reconnect:async () => {record = await ensureServer(stateDir); return record;},
+    });
+  } finally {
+    await request(record, "/api/admin/release-wait", {method:"POST",body:JSON.stringify({sessionId,waiterId}),signal:AbortSignal.timeout(1_000)}).catch(() => {});
   }
 }
 
@@ -235,7 +256,12 @@ async function runServer(args) {
     throw new CliError("UNEXPECTED_ARGUMENT", "server does not accept positional arguments.", { exitCode: 2 });
   }
   const stateDir = path.resolve(parsed.values["--state-dir"] ?? getStateRoot());
-  const running = await startBlueprintServer({ stateDir });
+  let port = 0;
+  try {
+    const listener = await readJson(resolveInside(stateDir,"listener.json"));
+    if (Number.isInteger(listener.port) && listener.port > 1023 && listener.port <= 65535) port = listener.port;
+  } catch (error) { if (error.code !== "ENOENT") throw error; }
+  const running = await startBlueprintServer({ stateDir, port });
   process.stderr.write(`Blueprint service listening at ${running.origin}\n`);
   const shutdown = async () => {
     await running.close().catch(() => {});
@@ -267,10 +293,10 @@ function setupOutput(operation, rows) {
     : operation === "remove"
       ? ["Restart the selected agent session so the removal takes effect."]
       : ["Run `blueprint setup hooks --agent <agent>` to install or repair a missing or stale integration."];
-  return `${renderFields([["setup_operation", operation]])}\n${renderTable("agents", rows, ["agent", "state", "changed", "config"])}\n${renderList("help", help)}\n`;
+  return `${renderFields([["setup_operation", operation]])}\n${renderTable("agents", rows, ["agent", "state", "changed", "config", "trust"])}\n${renderList("help", help)}\n`;
 }
 
-export async function runCli(argv = process.argv.slice(2)) {
+export async function runCli(argv = process.argv.slice(2), options = {}) {
   if (argv.length === 0 || (argv.length === 1 && argv[0] === "--full")) {
     const full = argv.includes("--full");
     const model = await getHomeModel({ full });
@@ -309,8 +335,15 @@ export async function runCli(argv = process.argv.slice(2)) {
     return;
   }
   if (command === "setup") {
-    const parsed = parseArguments(args, { valueFlags: ["--agent", "--config-home"] });
+    const parsed = parseArguments(args, { valueFlags: ["--agent", "--config-home", "--state-dir"] });
     const [action] = parsed.positional;
+    if (action === "browser") {
+      if (parsed.positional.length !== 2) throw new CliError("MISSING_BROWSER", "Use blueprint setup browser chrome|default.", {exitCode:2});
+      const stateDir = path.resolve(parsed.values["--state-dir"] ?? getStateRoot());
+      await setBrowserPreference(stateDir, parsed.positional[1]);
+      process.stdout.write(`${renderFields([["browser", parsed.positional[1]]])}\n`);
+      return;
+    }
     if (!action || parsed.positional.length > 1 || !["hooks", "status", "remove"].includes(action)) {
       throw new CliError("UNKNOWN_SETUP_OPERATION", `Expected setup operation hooks, status, or remove; received ${action || "none"}.`, {
         exitCode: 2,
@@ -326,15 +359,22 @@ export async function runCli(argv = process.argv.slice(2)) {
     return;
   }
   if (command === "hook") {
-    const parsed = parseArguments(args, { valueFlags: ["--agent"] });
-    if (parsed.positional.length !== 1 || parsed.positional[0] !== "context") {
-      throw new CliError("UNKNOWN_HOOK_OPERATION", "The internal hook command supports only `context`.", { exitCode: 2 });
+    const parsed = parseArguments(args, { valueFlags: ["--agent", "--state-dir"] });
+    if (parsed.positional.length !== 1 || !["context", "guard", "interrupt"].includes(parsed.positional[0])) {
+      throw new CliError("UNKNOWN_HOOK_OPERATION", "Expected hook context, guard, or interrupt.", { exitCode: 2 });
     }
     const agent = parsed.values["--agent"];
     if (!agent || !["codex", "claude"].includes(agent)) {
       throw new CliError("UNKNOWN_AGENT", "Hook context requires `--agent codex` or `--agent claude`.", { exitCode: 2 });
     }
     const input = await readHookInput();
+    if (parsed.positional[0] !== "context") {
+      if (agent !== "codex") throw new CliError("UNKNOWN_AGENT", "Review continuation hooks currently support Codex only.", {exitCode:2});
+      const options = {stateDir: parsed.values["--state-dir"]};
+      const result = parsed.positional[0] === "guard" ? await reviewGuard(input,options) : await interruptReview(input,options);
+      process.stdout.write(`${JSON.stringify(result)}\n`);
+      return;
+    }
     const cwd = typeof input.cwd === "string" ? input.cwd : process.cwd();
     process.stdout.write(`${await renderHookContext(agent, { cwd })}\n`);
     return;
@@ -346,18 +386,30 @@ export async function runCli(argv = process.argv.slice(2)) {
     });
   }
   const parsed = parseArguments(args, {
-    valueFlags: command === "stage" ? ["--state-dir", "--report"] : ["--state-dir"],
+    valueFlags: command === "stage" ? ["--state-dir", "--report"] : command === "wait" ? ["--state-dir", "--session"] : ["--state-dir", "--browser"],
     booleanFlags: ["review", "open"].includes(command) ? ["--no-open"] : [],
   });
   const stateDir = path.resolve(parsed.values["--state-dir"] ?? getStateRoot());
   const artifactPath = requireArtifact(command, parsed.positional);
   const record = await ensureServer(stateDir);
+  const taskId = codexTaskId();
+  const store = new SessionStore(stateDir);
   if (["review", "open"].includes(command)) {
+    const browser = await browserPreference(stateDir, parsed.values["--browser"]);
     const opened = await request(record, "/api/admin/open", {
       method: "POST",
       body: JSON.stringify({ artifactPath }),
     });
-    if (!parsed.values["--no-open"]) openBrowser(opened.reviewUrl);
+    const manifest = await store.deliveryManifest(artifactPath, opened.sessionId);
+    await bindReview({stateDir}, {taskId,sessionId:opened.sessionId,artifactPath:manifest.artifactPath});
+    if (!parsed.values["--no-open"]) {
+      try {
+        const launched = await (options.launchBrowser ?? launchBrowser)(opened.reviewUrl, browser);
+        process.stderr.write(`${renderFields([["browser", browser],["browser_status", launched.status]])}\n`);
+      } catch (error) {
+        process.stderr.write(`${renderFields([["browser",browser],["browser_error",error.message],["recovery_url",opened.reviewUrl],["instruction","Open this URL in the requested browser. The review and feedback wait remain available."]])}\n`);
+      }
+    }
     if (command === "open") {
       process.stdout.write(`${opened.reviewUrl}\n`);
       return;
@@ -366,13 +418,17 @@ export async function runCli(argv = process.argv.slice(2)) {
       ["review_url", opened.reviewUrl],
       ["status", "waiting for one intent-bearing feedback packet"],
     ])}\n`);
-    await waitForPacketDelivery(record, artifactPath);
+    await attachWait(record, manifest.artifactPath, stateDir, opened.sessionId, taskId);
     return;
   }
   if (command === "wait") {
-    await waitForPacketDelivery(record, artifactPath);
+    const manifest = await store.deliveryManifest(artifactPath, parsed.values["--session"]);
+    await bindReview({stateDir},{taskId, sessionId:manifest.sessionId, artifactPath:manifest.artifactPath});
+    await attachWait(record, manifest.artifactPath, stateDir, manifest.sessionId, taskId);
     return;
   }
+  const manifest = await store.deliveryManifest(artifactPath);
+  await assertReviewOwner({stateDir}, manifest.sessionId, taskId);
   const reportPath = parsed.values["--report"];
   let report = null;
   if (reportPath) {
@@ -386,6 +442,7 @@ export async function runCli(argv = process.argv.slice(2)) {
     method: "POST",
     body: JSON.stringify({ artifactPath, report }),
   });
+  process.stderr.write("Revision staged. Continue the existing feedback wait; staging is not approval or permission to finish the turn.\n");
   process.stdout.write(`${JSON.stringify(staged, null, 2)}\n`);
 }
 
